@@ -430,13 +430,10 @@ export default function App() {
   const [kitchenStatusFilter, setKitchenStatusFilter] = useState('PENDING'); // 'PENDING' | 'RECEIVED_ONLY' | 'PREPARING_ONLY'
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(() => {
     try {
-      const isStaff = typeof window !== 'undefined' && (
-        window.location.search.includes('staff') ||
-        window.location.search.includes('admin') ||
-        window.location.hash.includes('staff') ||
-        window.location.hash.includes('admin')
-      );
-      return isStaff && sessionStorage.getItem('tls_staff_logged_in') === 'true';
+      const s = typeof window !== 'undefined' ? window.location.search.toLowerCase() : '';
+      const h = typeof window !== 'undefined' ? window.location.hash.toLowerCase() : '';
+      const isStaff = s.includes('staff') || s.includes('admin') || s.includes('oms') || h.includes('staff') || h.includes('admin') || h.includes('oms');
+      return isStaff && (sessionStorage.getItem('tls_staff_logged_in') === 'true' || localStorage.getItem('tls_staff_logged_in') === 'true');
     } catch(e) {
       return false;
     }
@@ -621,13 +618,12 @@ export default function App() {
   const [postOrderUtr, setPostOrderUtr] = useState('');
   const [showGalleryDrawer, setShowGalleryDrawer] = useState(false);
   
-  // URL check for Staff/Admin portal (?staff, ?admin, #staff, #admin)
-  const isStaffUrl = typeof window !== 'undefined' && (
-    window.location.search.includes('staff') ||
-    window.location.search.includes('admin') ||
-    window.location.hash.includes('staff') ||
-    window.location.hash.includes('admin')
-  );
+  // URL check for Staff/Admin/OMS portal (?staff, ?admin, ?oms, ?omsstaff, #staff, #oms, etc.)
+  const isStaffUrl = typeof window !== 'undefined' && (() => {
+    const s = window.location.search.toLowerCase();
+    const h = window.location.hash.toLowerCase();
+    return s.includes('staff') || s.includes('admin') || s.includes('oms') || h.includes('staff') || h.includes('admin') || h.includes('oms');
+  })();
   const [isStaffRoute, setIsStaffRoute] = useState(isStaffUrl);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(null);
@@ -773,9 +769,10 @@ export default function App() {
 
   // REAL-TIME SUPABASE POSTGRESQL ENGINE & EVENT SUBSCRIPTION
   useEffect(() => {
-    // Auto-prompt staff login modal or direct to admin if ?staff visited
+    // Auto-prompt staff login modal or direct to admin if ?staff / ?oms visited
     if (isStaffUrl) {
-      if (isAdminLoggedIn) {
+      if (isAdminLoggedIn || sessionStorage.getItem('tls_staff_logged_in') === 'true' || localStorage.getItem('tls_staff_logged_in') === 'true') {
+        setIsAdminLoggedIn(true);
         setActiveTab('admin');
       } else {
         setShowLoginModal(true);
@@ -2026,6 +2023,7 @@ export default function App() {
       setIsAdminLoggedIn(true);
       try {
         sessionStorage.setItem('tls_staff_logged_in', 'true');
+        localStorage.setItem('tls_staff_logged_in', 'true');
       } catch (e) {}
       setShowLoginModal(false);
       setAdminPinInput('');
@@ -6642,26 +6640,6 @@ export default function App() {
                 </div>
               </form>
             )}
-
-            <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px dashed #E2E8F0', textAlign: 'center', fontSize: '0.78rem', color: '#64748B' }}>
-              Kitchen or Store Staff?{' '}
-              <button
-                type="button"
-                id="modal-switch-to-staff-btn"
-                onClick={() => {
-                  setShowCustomerLoginModal(false);
-                  setIsStaffRoute(true);
-                  if (isAdminLoggedIn) {
-                    setActiveTab('admin');
-                  } else {
-                    setShowLoginModal(true);
-                  }
-                }}
-                style={{ background: 'transparent', border: 'none', color: '#B45309', fontWeight: '800', cursor: 'pointer', padding: 0 }}
-              >
-                Open Staff OMS 🔒 →
-              </button>
-            </div>
           </div>
         </div>
       )}
