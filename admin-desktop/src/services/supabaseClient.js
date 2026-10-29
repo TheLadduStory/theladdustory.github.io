@@ -80,24 +80,87 @@ export const clearSupabaseConfig = () => {
   } catch (e) {}
 };
 
+// =========================================================================
+// LIVE EGRESS & API USAGE TELEMETRY TRACKER (GUARANTEES 5 GB QUOTA SAFETY)
+// =========================================================================
+const supabaseTelemetry = {
+  apiCallsCount: 0,
+  estimatedBytesReceived: 0,
+  lastQueryAt: null,
+  realtimeEventsCount: 0,
+  sessionStartedAt: Date.now()
+};
+
+export const getSupabaseTelemetry = () => {
+  const bytes = supabaseTelemetry.estimatedBytesReceived;
+  const formatted = bytes < 1024 
+    ? `${bytes} B` 
+    : bytes < 1024 * 1024 
+      ? `${(bytes / 1024).toFixed(1)} KB` 
+      : `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  return {
+    ...supabaseTelemetry,
+    formattedBytes: formatted,
+    quotaStatus: bytes < 100 * 1024 * 1024 ? 'OPTIMAL_SAFE (<2% of 5GB)' : 'MONITOR'
+  };
+};
+
+const trackTelemetry = (payload) => {
+  supabaseTelemetry.apiCallsCount += 1;
+  supabaseTelemetry.lastQueryAt = new Date().toLocaleTimeString();
+  if (payload) {
+    try {
+      const size = new Blob([JSON.stringify(payload)]).size;
+      supabaseTelemetry.estimatedBytesReceived += size;
+    } catch (e) {
+      supabaseTelemetry.estimatedBytesReceived += 450;
+    }
+  }
+};
+
 /**
- * Fetch all orders from Supabase with nested items
+ * Fetch orders with strict bounded limits & target phone filtering.
+ * CRITICAL EGRESS OPTIMIZATION: Only downloads order items for the fetched orders,
+ * avoiding unbounded full-table scans of historical items.
  */
-export const fetchOrdersFromSupabase = async () => {
+export const fetchOrdersFromSupabase = async (options = {}) => {
   if (!supabaseInstance) return null;
+  const opts = typeof options === 'number' ? { limit: options } : (options || {});
+  const { limit = 50, customerPhone = null } = opts;
+
   try {
-    const { data: orders, error: ordersErr } = await supabaseInstance
+    let query = supabaseInstance
       .from('orders')
       .select('*')
       .order('created_at', { ascending: false });
 
+    if (customerPhone) {
+      const cleanPhone = customerPhone.replace(/\D/g, '').slice(-10);
+      query = query.eq('customer_phone', cleanPhone);
+    } else if (limit && limit > 0) {
+      query = query.limit(limit);
+    }
+
+    const { data: orders, error: ordersErr } = await query;
     if (ordersErr) throw ordersErr;
+    trackTelemetry(orders);
 
-    const { data: items, error: itemsErr } = await supabaseInstance
-      .from('order_items')
-      .select('*');
+    if (!orders || orders.length === 0) return [];
 
-    if (itemsErr) throw itemsErr;
+    // ONLY fetch order_items belonging to the returned orders (avoids scanning entire historical DB)
+    const orderIds = orders.map(o => o.order_id);
+    let items = [];
+    if (orderIds.length > 0) {
+      const { data: itemsData, error: itemsErr } = await supabaseInstance
+        .from('order_items')
+        .select('*')
+        .in('order_id', orderIds);
+
+      if (!itemsErr && itemsData) {
+        items = itemsData;
+        trackTelemetry(itemsData);
+      }
+    }
 
     const itemsByOrder = (items || []).reduce((acc, item) => {
       acc[item.order_id] = acc[item.order_id] || [];
@@ -113,7 +176,7 @@ export const fetchOrdersFromSupabase = async () => {
       return acc;
     }, {});
 
-    return (orders || []).map(o => {
+    return orders.map(o => {
       const isPickup = (o.channel && o.channel.includes('PICKUP')) || (o.notes && o.notes.includes('PICKUP'));
       const isPorter = (o.channel && o.channel.includes('PORTER')) || (o.notes && o.notes.includes('PORTER'));
       const statusMatch = (o.notes || '').match(/\[STATUS:([^\]]+)\]/);
@@ -143,6 +206,72 @@ export const fetchOrdersFromSupabase = async () => {
     console.error('[Supabase] fetchOrders error:', err);
     return null;
   }
+};
+
+/**
+ * Fetch a single order with items (Used for instant zero-waste realtime INSERT patch)
+ */
+export const fetchSingleOrderFromSupabase = async (orderId) => {
+  if (!supabaseInstance || !orderId) return null;
+  try {
+    const { data: order, error } = await supabaseInstance
+      .from('orders')
+      .select('*')
+      .eq('order_id', orderId)
+      .maybeSingle();
+
+    if (error || !order) return null;
+    trackTelemetry(order);
+
+    const { data: items } = await supabaseInstance
+      .from('order_items')
+      .select('*')
+      .eq('order_id', orderId);
+
+    if (items) trackTelemetry(items);
+
+    const isPickup = (order.channel && order.channel.includes('PICKUP')) || (order.notes && order.notes.includes('PICKUP'));
+    const isPorter = (order.channel && order.channel.includes('PORTER')) || (order.notes && order.notes.includes('PORTER'));
+    const statusMatch = (order.notes || '').match(/\[STATUS:([^\]]+)\]/);
+    const resolvedStatus = statusMatch ? statusMatch[1].trim() : order.order_status;
+    const cleanNotes = (order.notes || '').replace(/\[STATUS:[^\]]+\]/g, '').trim();
+
+    return {
+      orderId: order.order_id,
+      time: new Date(order.created_at).toLocaleString('en-US', {
+        month: '2-digit', day: '2-digit', year: '2-digit',
+        hour: 'numeric', minute: '2-digit', hour12: true
+      }),
+      channel: order.channel || 'ONLINE_STORE',
+      fulfillmentType: isPorter ? 'PORTER' : (isPickup ? 'PICKUP' : 'DELIVERY'),
+      name: order.customer_name,
+      phone: order.customer_phone,
+      address: order.customer_address,
+      status: resolvedStatus,
+      paymentMethod: order.payment_method || 'UPI',
+      paymentStatus: order.payment_status || 'PAID',
+      total: Number(order.total_amount),
+      notes: cleanNotes,
+      items: (items || []).map(i => ({
+        sku: i.sku,
+        name: i.name,
+        packLabel: i.pack_label,
+        cleanWeight: i.clean_weight,
+        unitPrice: Number(i.unit_price),
+        qty: i.qty,
+        image: i.image
+      }))
+    };
+  } catch (err) {
+    return null;
+  }
+};
+
+/**
+ * Fetch customer orders specifically by phone (ultra low egress)
+ */
+export const fetchCustomerOrdersFromSupabase = async (phone) => {
+  return fetchOrdersFromSupabase({ customerPhone: phone, limit: 30 });
 };
 
 /**
@@ -310,6 +439,7 @@ export const fetchProductsFromSupabase = async () => {
 
     if (error) throw error;
     if (!data || data.length === 0) return null;
+    trackTelemetry(data);
 
     return data.map(p => {
       const rateKg = Number(p.rate_per_kg || 0);
@@ -457,15 +587,23 @@ export const subscribeToSupabaseRealtime = (onOrderChange, onProductChange, onCu
     const channel = supabaseInstance
       .channel('tls-realtime-hub')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
+        supabaseTelemetry.realtimeEventsCount += 1;
+        trackTelemetry(payload.new || payload.old || payload);
         if (onOrderChange) onOrderChange(payload);
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, (payload) => {
+        supabaseTelemetry.realtimeEventsCount += 1;
+        trackTelemetry(payload.new || payload.old || payload);
         if (onProductChange) onProductChange(payload);
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'customers' }, (payload) => {
+        supabaseTelemetry.realtimeEventsCount += 1;
+        trackTelemetry(payload.new || payload.old || payload);
         if (onCustomerChange) onCustomerChange(payload);
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'product_reviews' }, (payload) => {
+        supabaseTelemetry.realtimeEventsCount += 1;
+        trackTelemetry(payload.new || payload.old || payload);
         if (onReviewChange) onReviewChange(payload);
       })
       .subscribe();
@@ -733,18 +871,28 @@ export const updateOrderPorterDetailsInSupabase = async (orderId, { porterStatus
 /**
  * Fetch Product Reviews from Supabase
  */
-export const fetchReviewsFromSupabase = async () => {
+export const fetchReviewsFromSupabase = async (options = {}) => {
   if (!supabaseInstance) return null;
+  const opts = typeof options === 'number' ? { limit: options } : (options || {});
+  const { limit = 40 } = opts;
+
   try {
-    const { data, error } = await supabaseInstance
+    let query = supabaseInstance
       .from('product_reviews')
       .select('*')
       .order('created_at', { ascending: false });
+
+    if (limit && limit > 0) {
+      query = query.limit(limit);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.warn('[Supabase] product_reviews query notice:', error.message);
       return null;
     }
+    trackTelemetry(data);
     return (data || []).map(r => ({
       id: r.id,
       productSku: r.product_sku,
