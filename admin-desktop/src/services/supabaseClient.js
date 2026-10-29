@@ -964,6 +964,99 @@ export const insertReviewToSupabase = async (review) => {
   }
 };
 
+/**
+ * Submit B2B Corporate Gifting / Tasting Box Lead to Supabase
+ */
+export const insertCorporateLeadToSupabase = async (lead) => {
+  // Always save locally first so no high-value lead is ever lost
+  try {
+    const saved = localStorage.getItem('tls_corporate_leads');
+    const existing = saved ? JSON.parse(saved) : [];
+    const localLead = { ...lead, id: `lead-${Date.now()}`, created_at: new Date().toISOString() };
+    localStorage.setItem('tls_corporate_leads', JSON.stringify([localLead, ...existing]));
+  } catch(e) {}
+
+  if (!supabaseInstance) return { success: true, savedLocally: true };
+
+  try {
+    const payload = {
+      company_name: lead.companyName || 'Corporate Client',
+      contact_person: lead.contactPerson || 'Lead Contact',
+      phone: (lead.phone || '').replace(/\D/g, '').slice(-10),
+      email: lead.email || '',
+      box_quantity: Number(lead.boxQuantity || 50),
+      hamper_type: lead.hamperType || 'ASSORTED_SUPERFOOD_HAMPER',
+      delivery_date: lead.deliveryDate || null,
+      estimated_budget: Number(lead.estimatedBudget || 0),
+      notes: lead.notes || '',
+      source: lead.source || 'WEBSITE',
+      status: 'NEW_INQUIRY'
+    };
+
+    const { data, error } = await supabaseInstance
+      .from('corporate_leads')
+      .insert(payload)
+      .select()
+      .maybeSingle();
+
+    if (error) {
+      console.warn('[Supabase] corporate_leads insert notice (fallback to local):', error.message);
+      return { success: true, savedLocally: true };
+    }
+
+    trackTelemetry(data);
+    return { success: true, data };
+  } catch (err) {
+    console.warn('[Supabase] insertCorporateLead fallback:', err);
+    return { success: true, savedLocally: true };
+  }
+};
+
+/**
+ * Fetch B2B Corporate Leads from Supabase for Staff Dashboard
+ */
+export const fetchCorporateLeadsFromSupabase = async (options = {}) => {
+  const { limit = 40 } = typeof options === 'number' ? { limit: options } : (options || {});
+  if (!supabaseInstance) {
+    try {
+      const saved = localStorage.getItem('tls_corporate_leads');
+      return saved ? JSON.parse(saved) : [];
+    } catch(e) {
+      return [];
+    }
+  }
+
+  try {
+    let query = supabaseInstance
+      .from('corporate_leads')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (limit && limit > 0) {
+      query = query.limit(limit);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      console.warn('[Supabase] corporate_leads query notice:', error.message);
+      const saved = localStorage.getItem('tls_corporate_leads');
+      return saved ? JSON.parse(saved) : [];
+    }
+
+    trackTelemetry(data);
+    return data || [];
+  } catch (err) {
+    console.warn('[Supabase] fetchCorporateLeads fallback:', err);
+    try {
+      const saved = localStorage.getItem('tls_corporate_leads');
+      return saved ? JSON.parse(saved) : [];
+    } catch(e) {
+      return [];
+    }
+  }
+};
+
+
 
 
 

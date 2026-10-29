@@ -186,3 +186,29 @@ values
 ('TILL-BLACK-SESAME', 'Till Laddu (Black Sesame)', 5, 'Venkatesh Rao', '98801*****', 'Authentic Ayurvedic recipe! Excellent warmth, great sesame flavor, and pure cow ghee richness.', now() - interval '2 days'),
 ('QUINOA-MOONG-DAL', 'Quinoa Moong Dal Laddu', 5, 'Dr. Meera Iyer', '94481*****', 'Very light on the stomach, soothing cardamom fragrance, and made with pure love. 10/10!', now() - interval '1 day'),
 ('SAVORY-MAKHANA', 'Savory Munchies (Roasted Makhana)', 5, 'Karan Verma', '96112*****', 'Slow roasted in pure cow ghee with Himalayan pink salt. The crunch is unbelievable!', now());
+
+-- 11. CORPORATE & B2B GIFTING LEADS (HR, FESTIVALS, WEDDINGS)
+create table if not exists public.corporate_leads (
+    id uuid primary key default uuid_generate_v4(),
+    company_name text not null,
+    contact_person text not null,
+    phone text not null,
+    email text,
+    box_quantity integer default 50,
+    hamper_type text default 'ASSORTED_SUPERFOOD_HAMPER',
+    delivery_date date,
+    estimated_budget numeric,
+    notes text,
+    source text default 'WEBSITE',
+    status text default 'NEW_INQUIRY' check (status in ('NEW_INQUIRY', 'CONTACTED', 'SAMPLE_SENT', 'CONVERTED', 'CLOSED')),
+    created_at timestamptz default now()
+);
+
+create index if not exists idx_corporate_leads_created on public.corporate_leads(created_at desc);
+create index if not exists idx_corporate_leads_phone on public.corporate_leads(phone);
+
+alter table public.corporate_leads enable row level security;
+create policy "Allow public insert corporate_leads" on public.corporate_leads for insert with check (true);
+create policy "Allow staff read corporate_leads" on public.corporate_leads for select using (true);
+create policy "Allow staff update corporate_leads" on public.corporate_leads for update using (true);
+

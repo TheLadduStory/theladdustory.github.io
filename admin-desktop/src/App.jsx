@@ -26,7 +26,9 @@ import {
   updateOrderNotesInSupabase,
   updateOrderPorterDetailsInSupabase,
   fetchReviewsFromSupabase,
-  insertReviewToSupabase
+  insertReviewToSupabase,
+  insertCorporateLeadToSupabase,
+  fetchCorporateLeadsFromSupabase
 } from './services/supabaseClient';
 
 // OFFICIAL GOOGLE FORM CONFIGURATION (HEADLESS SYNC TO GOOGLE SHEETS)
@@ -42,6 +44,20 @@ const FORM_ENTRIES = {
 // REAL-TIME BROADCAST CHANNELS (SUPABASE POSTGRESQL IS 100% PRIMARY DB)
 const REALTIME_TOPIC_URL = 'https://ntfy.sh/the_laddu_story_live_sync_channel';
 const APPS_SCRIPT_EXEC_URL = 'https://script.google.com/macros/s/AKfycbxIJKZkGtjRI_RXCAzBn-dQ8fs9XbG7smdQtbuEZU5z8gUAWpJCfzlEI55879LpuHb8/exec';
+
+// OFFICIAL BRAND OMNICHANNEL PRESENCE & SOCIAL HUB
+const BRAND_CHANNELS = {
+  INSTAGRAM: 'https://www.instagram.com/theladdustory/',
+  FACEBOOK: 'https://www.facebook.com/profile.php?id=61568690969904',
+  WHATSAPP_NUMBER: '9343207515',
+  WHATSAPP_LINK: 'https://wa.me/919343207515',
+  YOUTUBE: 'https://www.youtube.com/@TheLadduStory',
+  YOUTUBE_CREATE: 'https://www.youtube.com/create_channel',
+  EMAIL_LEADS: 'theladdustory@gmail.com',
+  GOOGLE_PROFILE: 'https://www.google.com/search?q=The+Laddu+Story+Bangalore',
+  GOOGLE_REVIEW_LINK: 'https://search.google.com/local/writereview?placeid=ChIJ-the-laddu-story',
+  KITCHEN_LOCATION: '@15101, Tower-15, Prestige Tranquility, Budigere Cross, Bangalore - 560049'
+};
 
 
 // OFFICIAL 11 FLYER & OMS ITEMS (MATCHING EXACT SKUS & IMAGES FROM D:\The Laddu Story Application\images)
@@ -619,6 +635,26 @@ export default function App() {
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
   const [addedToast, setAddedToast] = useState('');
 
+  // Omnichannel Traffic Attribution & Corporate Lead Generation State
+  const [trafficSource, setTrafficSource] = useState(null);
+  const [highlightedSku, setHighlightedSku] = useState(null);
+  const [showCorporateModal, setShowCorporateModal] = useState(false);
+  const [corporateForm, setCorporateForm] = useState({
+    name: '',
+    company: '',
+    phone: '',
+    email: '',
+    count: '50',
+    occasion: 'Diwali / Festive Corporate Gifting',
+    boxType: 'Luxe 4-Millet Assortment (Pure Desi Cow Ghee)',
+    customNote: ''
+  });
+  const [isSubmittingCorporateLead, setIsSubmittingCorporateLead] = useState(false);
+  const [corporateSuccessMsg, setCorporateSuccessMsg] = useState('');
+  const [corporateLeads, setCorporateLeads] = useState([]);
+  const [isLoadingLeads, setIsLoadingLeads] = useState(false);
+  const [showConciergeMenu, setShowConciergeMenu] = useState(false);
+
   // Orders Store (Supabase PostgreSQL is primary)
   const [orders, setOrders] = useState(() => {
     try {
@@ -671,6 +707,43 @@ export default function App() {
       }
     } catch (e) {}
   }, []);
+
+  // Omnichannel Deep-Link & Referral Traffic Tracker
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const source = params.get('source') || params.get('utm_source') || params.get('ref');
+      if (source) {
+        const cleanSource = source.trim().toUpperCase();
+        setTrafficSource(cleanSource);
+        sessionStorage.setItem('tls_traffic_source', cleanSource);
+      } else {
+        const savedSource = sessionStorage.getItem('tls_traffic_source');
+        if (savedSource) setTrafficSource(savedSource);
+      }
+
+      const sku = params.get('sku');
+      if (sku) {
+        setHighlightedSku(sku.trim().toUpperCase());
+      }
+
+      const tab = params.get('tab');
+      if (tab === 'corporate' || tab === 'b2b') {
+        setShowCorporateModal(true);
+      }
+    } catch (e) {}
+  }, []);
+
+  // Auto-fetch Corporate Leads when Staff opens the Leads CRM
+  useEffect(() => {
+    if (activeTab === 'admin' && adminSection === 'leads' && isSupabaseConfigured()) {
+      setIsLoadingLeads(true);
+      fetchCorporateLeadsFromSupabase().then(res => {
+        if (res) setCorporateLeads(res);
+        setIsLoadingLeads(false);
+      });
+    }
+  }, [activeTab, adminSection]);
 
   // Sync inputs when customerUser changes
   useEffect(() => {
@@ -1799,7 +1872,9 @@ export default function App() {
     const newOrder = {
       orderId,
       time: new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }) + ', ' + new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
-      channel: isPorter ? 'DOORSTEP_PORTER' : (fulfillmentType === 'PICKUP' ? 'STORE_PICKUP' : 'ONLINE_STORE'),
+      channel: trafficSource
+        ? `${trafficSource}_${isPorter ? 'PORTER' : (fulfillmentType === 'PICKUP' ? 'PICKUP' : 'STORE')}`
+        : (isPorter ? 'DOORSTEP_PORTER' : (fulfillmentType === 'PICKUP' ? 'STORE_PICKUP' : 'ONLINE_STORE')),
       fulfillmentType: isPorter ? 'PORTER' : fulfillmentType,
       name: custName.trim(),
       phone: cleanPhone,
@@ -1870,6 +1945,67 @@ export default function App() {
     setCart([]);
     setIsSubmitting(false);
     setIsMobileCartOpen(false);
+  };
+
+  // Submit Corporate Gifting & Bulk Order Lead
+  const handleCorporateSubmit = async (e) => {
+    e.preventDefault();
+    if (!corporateForm.name.trim() || !corporateForm.phone.trim()) {
+      alert('Please provide your name and phone number so our kitchen team can contact you.');
+      return;
+    }
+    const phoneVal = validateIndianMobile(corporateForm.phone);
+    if (!phoneVal.valid) {
+      alert(phoneVal.error);
+      return;
+    }
+
+    setIsSubmittingCorporateLead(true);
+    setCorporateSuccessMsg('');
+
+    const leadPayload = {
+      name: corporateForm.name.trim(),
+      company: corporateForm.company.trim(),
+      phone: corporateForm.phone.replace(/\D/g, '').slice(-10),
+      email: corporateForm.email.trim(),
+      boxCount: corporateForm.count,
+      occasion: corporateForm.occasion,
+      boxType: corporateForm.boxType,
+      customNote: corporateForm.customNote.trim(),
+      trafficSource: trafficSource || 'DIRECT_STORE'
+    };
+
+    try {
+      await insertCorporateLeadToSupabase(leadPayload);
+      setCorporateSuccessMsg('✨ Thank you! Your corporate gifting request has been recorded. Our chef will contact you shortly.');
+      
+      // WhatsApp quick message
+      const waMsg = `*Namaste! New Corporate Gifting Inquiry for The Laddu Story* 🎁\n\n` +
+        `• *Contact:* ${leadPayload.name}\n` +
+        `• *Company:* ${leadPayload.company || 'Not Specified'}\n` +
+        `• *Phone:* ${leadPayload.phone}\n` +
+        `• *Email:* ${leadPayload.email || 'N/A'}\n` +
+        `• *Estimated Boxes:* ${leadPayload.boxCount}\n` +
+        `• *Occasion:* ${leadPayload.occasion}\n` +
+        `• *Box Selection:* ${leadPayload.boxType}\n` +
+        (leadPayload.customNote ? `• *Requirements:* ${leadPayload.customNote}\n` : '') +
+        `• *Source:* ${leadPayload.trafficSource}`;
+
+      const waUrl = `https://wa.me/919343207515?text=${encodeURIComponent(waMsg)}`;
+
+      setTimeout(() => {
+        if (window.confirm('Your request has been submitted! Would you also like to open WhatsApp directly with our kitchen for an immediate consultation?')) {
+          window.open(waUrl, '_blank');
+        }
+      }, 400);
+
+    } catch (err) {
+      console.warn('Corporate lead save note:', err);
+      const waUrl = `https://wa.me/919343207515?text=${encodeURIComponent(`Corporate Lead from ${leadPayload.name}: ${leadPayload.boxCount} boxes for ${leadPayload.occasion}`)}`;
+      window.open(waUrl, '_blank');
+    } finally {
+      setIsSubmittingCorporateLead(false);
+    }
   };
 
   // Staff Login
@@ -2412,6 +2548,27 @@ export default function App() {
                   🛍️ Order Laddus
                 </button>
 
+                <button
+                  id="nav-corporate-btn"
+                  onClick={() => setShowCorporateModal(true)}
+                  style={{
+                    background: 'linear-gradient(135deg, #B45309 0%, #D97706 100%)',
+                    color: '#FFFFFF',
+                    border: '1px solid #FDE68A',
+                    padding: '8px 14px',
+                    borderRadius: '8px',
+                    fontWeight: '800',
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                  }}
+                >
+                  <span>🎁 Corporate Gifting</span>
+                </button>
+
                 {/* Customer Login / My Orders Badge */}
                 {customerUser ? (
                   <div style={{ display: 'flex', alignItems: 'center', background: '#FDE68A', borderRadius: '8px', padding: '2px 4px' }}>
@@ -2555,6 +2712,38 @@ export default function App() {
         </div>
       </header>
 
+      {/* OMNICHANNEL SOCIAL & BRAND CONNECT BAR */}
+      <div style={{ background: '#2B060F', borderBottom: '1px solid #4A121E', padding: '7px 20px', color: '#FDE68A', fontSize: '0.8rem' }}>
+        <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+            <span style={{ color: '#F8FAFC', fontWeight: '700', fontSize: '0.78rem' }}>Follow & Connect:</span>
+            <a href={BRAND_CHANNELS.INSTAGRAM} target="_blank" rel="noopener noreferrer" style={{ color: '#FDE68A', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: '700', fontSize: '0.78rem' }}>
+              <span>📸 Instagram</span> <span style={{ opacity: 0.8, fontSize: '0.72rem' }}>(@theladdustory)</span>
+            </a>
+            <a href={BRAND_CHANNELS.FACEBOOK} target="_blank" rel="noopener noreferrer" style={{ color: '#FDE68A', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: '700', fontSize: '0.78rem' }}>
+              <span>📘 Facebook</span>
+            </a>
+            <a href={BRAND_CHANNELS.WHATSAPP_LINK} target="_blank" rel="noopener noreferrer" style={{ color: '#34D399', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: '700', fontSize: '0.78rem' }}>
+              <span>💬 WhatsApp (9343207515)</span>
+            </a>
+            <a href={BRAND_CHANNELS.YOUTUBE} target="_blank" rel="noopener noreferrer" style={{ color: '#F87171', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: '700', fontSize: '0.78rem' }}>
+              <span>📺 YouTube (@TheLadduStory)</span>
+            </a>
+            <a href={BRAND_CHANNELS.GOOGLE_PROFILE} target="_blank" rel="noopener noreferrer" style={{ color: '#60A5FA', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: '700', fontSize: '0.78rem' }}>
+              <span>⭐ Google Profile & Reviews</span>
+            </a>
+          </div>
+          <div>
+            <button 
+              onClick={() => setShowCorporateModal(true)}
+              style={{ background: '#F59E0B', color: '#350B15', border: 'none', padding: '3px 10px', borderRadius: '6px', fontSize: '0.74rem', fontWeight: '800', cursor: 'pointer' }}
+            >
+              🎁 Corporate Inquiries & Tasting Box →
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* SUB-HEADER STATUS BAR */}
       <div style={{ background: '#FFFBEB', borderBottom: '1px solid #FDE68A', padding: '7px 20px', fontSize: '0.8rem', color: '#78350F', textAlign: 'center', fontWeight: '500' }}>
         <span>🌿 Pure Desi Cow Ghee & Unrefined Jaggery • Zero White Sugar • Freshly Prepared in Bangalore</span>
@@ -2564,6 +2753,19 @@ export default function App() {
           </span>
         )}
       </div>
+
+      {/* DYNAMIC REFERRAL TRAFFIC WELCOME BANNER */}
+      {trafficSource && (
+        <div style={{ background: 'linear-gradient(90deg, #FEF3C7 0%, #FDE68A 100%)', borderBottom: '1px solid #F59E0B', padding: '8px 20px', color: '#78350F', fontSize: '0.82rem', fontWeight: '700', textAlign: 'center', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px' }}>
+          <span>✨ Namaste! Welcome to our Kitchen from <strong>{trafficSource}</strong>! Every laddu is handcrafted to order in 100% Pure Desi Cow Ghee.</span>
+          <button 
+            onClick={() => setShowCorporateModal(true)} 
+            style={{ background: '#78350F', color: '#FFF', border: 'none', padding: '3px 10px', borderRadius: '4px', fontSize: '0.74rem', fontWeight: '800', cursor: 'pointer' }}
+          >
+            Request Tasting Box
+          </button>
+        </div>
+      )}
 
       {/* ADDED TO CART TOAST NOTIFICATION */}
       {addedToast && (
@@ -2618,6 +2820,72 @@ export default function App() {
                 </div>
               </div>
 
+              {/* B2B CORPORATE GIFTING & TASTING BOX SHOWCASE CARD */}
+              <div style={{
+                background: 'linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 50%, #FDE68A 100%)',
+                border: '2px solid #F59E0B',
+                borderRadius: '16px',
+                padding: '20px 24px',
+                marginBottom: '24px',
+                boxShadow: '0 4px 15px rgba(245, 158, 11, 0.15)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '16px'
+              }}>
+                <div style={{ maxWidth: '780px' }}>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#78350F', color: '#FFF', padding: '3px 10px', borderRadius: '8px', fontSize: '0.72rem', fontWeight: '800', marginBottom: '8px' }}>
+                    <span>🎁 B2B CORPORATE GIFTING & EVENT HAMPERS</span>
+                  </div>
+                  <h3 style={{ margin: '0 0 6px', fontSize: '1.25rem', fontWeight: '800', color: '#4A121E' }}>
+                    Elevate Festive & Employee Gifting with Pure Artisanal Laddus
+                  </h3>
+                  <p style={{ margin: 0, fontSize: '0.86rem', color: '#78350F', lineHeight: 1.5 }}>
+                    Luxe handcrafted wooden & gold-embossed gift boxes, custom corporate logo sleeves, and healthy guilt-free treats made with 100% Pure Desi Cow Ghee and Organic Millets. Bulk discounts for 25 to 500+ boxes.
+                  </p>
+                </div>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  <button
+                    id="hero-request-quote-btn"
+                    onClick={() => setShowCorporateModal(true)}
+                    style={{
+                      background: '#4A121E',
+                      color: '#FFFFFF',
+                      border: 'none',
+                      padding: '11px 20px',
+                      borderRadius: '8px',
+                      fontWeight: '800',
+                      fontSize: '0.88rem',
+                      cursor: 'pointer',
+                      boxShadow: '0 4px 12px rgba(74, 18, 30, 0.2)'
+                    }}
+                  >
+                    ✨ Request Tasting Box / Custom Quote
+                  </button>
+                  <a
+                    href="https://wa.me/919343207515?text=Namaste!%20I%20am%20inquiring%20about%20Corporate%20Gifting%20%26%20Bulk%20Boxes%20from%20The%20Laddu%20Story."
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      background: '#059669',
+                      color: '#FFFFFF',
+                      textDecoration: 'none',
+                      padding: '11px 18px',
+                      borderRadius: '8px',
+                      fontWeight: '800',
+                      fontSize: '0.88rem',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      boxShadow: '0 4px 12px rgba(5, 150, 105, 0.2)'
+                    }}
+                  >
+                    💬 WhatsApp Concierge
+                  </a>
+                </div>
+              </div>
+
               {/* Products Section Header */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <h3 style={{ fontSize: '1.3rem', fontWeight: '800', color: '#4A121E', margin: 0 }}>
@@ -2633,21 +2901,29 @@ export default function App() {
                   const currentOpt = options.find(o => o.key === currentKey) || options[0];
                   const price = currentOpt ? currentOpt.price : product.p500;
                   const isOutOfStock = product.stockStatus === 'OUT_OF_STOCK';
+                  const isHighlighted = highlightedSku && (highlightedSku === product.sku || highlightedSku === product.id);
                   
                   return (
                     <div 
                       key={product.id || product.sku}
+                      id={`product-${product.sku}`}
                       style={{ 
                         background: '#fff', 
                         borderRadius: '16px', 
                         overflow: 'hidden', 
-                        border: '1px solid #E2E8F0', 
-                        boxShadow: '0 4px 15px rgba(0,0,0,0.03)',
+                        border: isHighlighted ? '2.5px solid #F59E0B' : '1px solid #E2E8F0', 
+                        boxShadow: isHighlighted ? '0 8px 25px rgba(245, 158, 11, 0.35)' : '0 4px 15px rgba(0,0,0,0.03)',
                         display: 'flex',
                         flexDirection: 'column',
-                        opacity: isOutOfStock ? 0.75 : 1
+                        opacity: isOutOfStock ? 0.75 : 1,
+                        position: 'relative'
                       }}
                     >
+                      {isHighlighted && (
+                        <div style={{ position: 'absolute', top: '10px', left: '10px', zIndex: 10, background: '#F59E0B', color: '#350B15', padding: '4px 10px', borderRadius: '6px', fontWeight: '800', fontSize: '0.72rem', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}>
+                          ★ Featured from Social Media
+                        </div>
+                      )}
                       {/* Product Image */}
                       <div style={{ position: 'relative', height: '180px', background: '#FFF8F0', overflow: 'hidden' }}>
                         <img 
@@ -3415,6 +3691,21 @@ export default function App() {
                   }}
                 >
                   ⭐ Patron Reviews ({reviews.length})
+                </button>
+                <button
+                  onClick={() => setAdminSection('leads')}
+                  style={{
+                    background: adminSection === 'leads' ? '#4A121E' : '#F1F5F9',
+                    color: adminSection === 'leads' ? '#fff' : '#475569',
+                    border: 'none',
+                    padding: '9px 16px',
+                    borderRadius: '8px',
+                    fontWeight: '800',
+                    fontSize: '0.88rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  💼 Corporate Leads ({corporateLeads.length})
                 </button>
               </div>
 
@@ -4425,8 +4716,223 @@ export default function App() {
               );
             })()}
 
+            {/* VIEW 4: CORPORATE GIFTING & BULK LEADS CRM */}
+            {adminSection === 'leads' && (() => {
+              return (
+                <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #E2E8F0', padding: '24px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
+                  
+                  {/* Header & Controls */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', marginBottom: '20px', borderBottom: '1px solid #F1F5F9', paddingBottom: '16px' }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '800', color: '#4A121E', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span>💼 Inbound Corporate Gifting & Bulk Order Leads</span>
+                        <span style={{ fontSize: '0.8rem', background: '#FDE68A', color: '#78350F', padding: '2px 8px', borderRadius: '12px' }}>
+                          {corporateLeads.length} Total Leads
+                        </span>
+                      </h3>
+                      <p style={{ margin: '4px 0 0', fontSize: '0.84rem', color: '#64748B' }}>
+                        Leads captured from Instagram, Facebook, WhatsApp Concierge, and Website. Instant 1-click WhatsApp follow-up.
+                      </p>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <button
+                        onClick={async () => {
+                          setIsLoadingLeads(true);
+                          const res = await fetchCorporateLeadsFromSupabase();
+                          if (res) setCorporateLeads(res);
+                          setIsLoadingLeads(false);
+                        }}
+                        style={{
+                          background: '#FAF6F0',
+                          border: '1px solid #E2E8F0',
+                          padding: '8px 14px',
+                          borderRadius: '8px',
+                          fontWeight: '700',
+                          fontSize: '0.82rem',
+                          color: '#4A121E',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {isLoadingLeads ? '🔄 Refreshing...' : '🔄 Refresh Leads'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Leads Table */}
+                  {corporateLeads.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '48px 20px', color: '#64748B' }}>
+                      <div style={{ fontSize: '2.5rem', marginBottom: '10px' }}>💼</div>
+                      <div style={{ fontWeight: '700', fontSize: '1rem', color: '#1E293B', marginBottom: '6px' }}>
+                        No Corporate Leads Yet
+                      </div>
+                      <div style={{ fontSize: '0.85rem', maxWidth: '420px', margin: '0 auto' }}>
+                        Corporate inquiries submitted via the store modal, Instagram referral links, or tasting box banner will appear here instantly.
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+                        <thead>
+                          <tr style={{ background: '#FAF6F0', borderBottom: '2px solid #E2E8F0', color: '#4A121E', fontWeight: '800' }}>
+                            <th style={{ padding: '12px 14px' }}>Date & Source</th>
+                            <th style={{ padding: '12px 14px' }}>Company / Client</th>
+                            <th style={{ padding: '12px 14px' }}>Contact</th>
+                            <th style={{ padding: '12px 14px' }}>Requirement</th>
+                            <th style={{ padding: '12px 14px' }}>Notes</th>
+                            <th style={{ padding: '12px 14px', textAlign: 'right' }}>Follow-up Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {corporateLeads.map(lead => {
+                            const dateStr = lead.created_at ? new Date(lead.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Recent';
+                            const followUpMsg = `Namaste ${lead.name}! This is from The Laddu Story (Artisanal Pure Cow Ghee & Jaggery Kitchen, Bangalore). Regarding your inquiry for ${lead.box_count || lead.boxCount || 50} corporate gift boxes for ${lead.occasion || 'Festive Gifting'} — we would love to share our curated catalogue and send a complimentary tasting box to your office!`;
+                            const waFollowUpUrl = `https://wa.me/91${(lead.phone || '').replace(/\D/g, '').slice(-10)}?text=${encodeURIComponent(followUpMsg)}`;
+
+                            return (
+                              <tr key={lead.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                                <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
+                                  <div style={{ fontWeight: '700', color: '#1E293B' }}>{dateStr}</div>
+                                  <span style={{ display: 'inline-block', background: '#FEF3C7', color: '#92400E', padding: '2px 6px', borderRadius: '4px', fontSize: '0.72rem', fontWeight: '700', marginTop: '2px' }}>
+                                    {lead.traffic_source || lead.trafficSource || 'DIRECT'}
+                                  </span>
+                                </td>
+                                <td style={{ padding: '12px 14px' }}>
+                                  <div style={{ fontWeight: '800', color: '#4A121E' }}>{lead.company || 'Individual / Family Event'}</div>
+                                  <div style={{ color: '#475569', fontSize: '0.8rem' }}>{lead.name}</div>
+                                </td>
+                                <td style={{ padding: '12px 14px' }}>
+                                  <div style={{ fontWeight: '700', color: '#0F172A' }}>📞 +91 {lead.phone}</div>
+                                  {lead.email && <div style={{ color: '#64748B', fontSize: '0.78rem' }}>✉️ {lead.email}</div>}
+                                </td>
+                                <td style={{ padding: '12px 14px' }}>
+                                  <div style={{ fontWeight: '700', color: '#047857' }}>🎁 {lead.box_count || lead.boxCount || 50} Boxes</div>
+                                  <div style={{ fontSize: '0.78rem', color: '#64748B' }}>{lead.occasion || 'Festive'} • {lead.box_type || lead.boxType || 'Assortment'}</div>
+                                </td>
+                                <td style={{ padding: '12px 14px', maxWidth: '240px', color: '#334155', fontSize: '0.8rem', fontStyle: lead.custom_note ? 'normal' : 'italic' }}>
+                                  {lead.custom_note || lead.customNote || 'No specific notes'}
+                                </td>
+                                <td style={{ padding: '12px 14px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                                  <a
+                                    href={waFollowUpUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{
+                                      background: '#059669',
+                                      color: '#FFFFFF',
+                                      textDecoration: 'none',
+                                      padding: '8px 12px',
+                                      borderRadius: '6px',
+                                      fontWeight: '700',
+                                      fontSize: '0.78rem',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '4px'
+                                    }}
+                                  >
+                                    💬 Follow-up on WhatsApp
+                                  </a>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                </div>
+              );
+            })()}
+
           </div>
         )}
+
+        {/* ROYAL BRAND OMNICHANNEL FOOTER */}
+        <footer style={{
+          background: '#20070D',
+          color: '#FAF6F0',
+          borderRadius: '20px',
+          marginTop: '40px',
+          padding: '36px 30px 24px',
+          border: '1px solid #4A121E'
+        }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '28px', marginBottom: '28px' }}>
+            {/* Column 1: Brand Philosophy */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                <img src="images/TheLadduStory_Logo.jpg" alt="The Laddu Story" style={{ width: '40px', height: '40px', borderRadius: '50%', border: '2px solid #FDE68A' }} onError={(e) => { e.target.style.display = 'none'; }} />
+                <h4 style={{ margin: 0, fontSize: '1.2rem', color: '#FDE68A', fontWeight: '800' }}>The Laddu Story</h4>
+              </div>
+              <p style={{ fontSize: '0.84rem', color: '#CBD5E1', lineHeight: 1.6, margin: 0 }}>
+                Rediscovering India's ancient culinary wellness. Every laddu is slowly roasted and hand-rolled in Pure Desi Cow Ghee and sweetened naturally with unrefined jaggery or dates. Zero white sugar. Zero preservatives.
+              </p>
+            </div>
+
+            {/* Column 2: Kitchen & Fulfillment */}
+            <div>
+              <h5 style={{ margin: '0 0 12px', fontSize: '0.95rem', color: '#FDE68A', fontWeight: '700' }}>📍 Artisanal Kitchen</h5>
+              <p style={{ fontSize: '0.82rem', color: '#CBD5E1', lineHeight: 1.5, margin: '0 0 8px' }}>
+                <strong>Kitchen & Self-Pickup:</strong><br/>
+                {BRAND_CHANNELS.KITCHEN_LOCATION}
+              </p>
+              <p style={{ fontSize: '0.82rem', color: '#CBD5E1', lineHeight: 1.5, margin: 0 }}>
+                <strong>Deliveries:</strong> Doorstep across Bangalore via Porter / Dunzo. Pan-India shipping for corporate & festive bulk orders.
+              </p>
+            </div>
+
+            {/* Column 3: Corporate & Inquiries */}
+            <div>
+              <h5 style={{ margin: '0 0 12px', fontSize: '0.95rem', color: '#FDE68A', fontWeight: '700' }}>💼 B2B & Corporate Gifting</h5>
+              <p style={{ fontSize: '0.82rem', color: '#CBD5E1', lineHeight: 1.5, margin: '0 0 10px' }}>
+                Custom corporate hampers, festive employee gifting, wedding favor boxes, and wellness hampers.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <span style={{ fontSize: '0.82rem', color: '#93C5FD' }}>✉️ Corporate Leads: {BRAND_CHANNELS.EMAIL_LEADS}</span>
+                <span style={{ fontSize: '0.82rem', color: '#86EFAC' }}>📞 Direct Kitchen: +91 {BRAND_CHANNELS.WHATSAPP_NUMBER}</span>
+                <button 
+                  onClick={() => setShowCorporateModal(true)}
+                  style={{ background: '#F59E0B', color: '#350B15', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: '800', fontSize: '0.78rem', cursor: 'pointer', marginTop: '4px', width: 'fit-content' }}
+                >
+                  🎁 Request Tasting Box →
+                </button>
+              </div>
+            </div>
+
+            {/* Column 4: Official Social Channels */}
+            <div>
+              <h5 style={{ margin: '0 0 12px', fontSize: '0.95rem', color: '#FDE68A', fontWeight: '700' }}>🌐 Official Social Channels</h5>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <a href={BRAND_CHANNELS.INSTAGRAM} target="_blank" rel="noopener noreferrer" style={{ color: '#F1F5F9', textDecoration: 'none', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>📸 Instagram:</span> <strong style={{ color: '#FDE68A' }}>@theladdustory</strong>
+                </a>
+                <a href={BRAND_CHANNELS.FACEBOOK} target="_blank" rel="noopener noreferrer" style={{ color: '#F1F5F9', textDecoration: 'none', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>📘 Facebook:</span> <strong style={{ color: '#FDE68A' }}>The Laddu Story</strong>
+                </a>
+                <a href={BRAND_CHANNELS.WHATSAPP_LINK} target="_blank" rel="noopener noreferrer" style={{ color: '#F1F5F9', textDecoration: 'none', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>💬 WhatsApp:</span> <strong style={{ color: '#34D399' }}>+91 {BRAND_CHANNELS.WHATSAPP_NUMBER}</strong>
+                </a>
+                <a href={BRAND_CHANNELS.YOUTUBE} target="_blank" rel="noopener noreferrer" style={{ color: '#F1F5F9', textDecoration: 'none', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>📺 YouTube Channel:</span> <strong style={{ color: '#F87171' }}>@TheLadduStory</strong>
+                </a>
+                <a href={BRAND_CHANNELS.GOOGLE_PROFILE} target="_blank" rel="noopener noreferrer" style={{ color: '#F1F5F9', textDecoration: 'none', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>⭐ Google Profile:</span> <strong style={{ color: '#60A5FA' }}>Reviews & Ratings</strong>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', fontSize: '0.74rem', color: '#94A3B8' }}>
+            <div>© {new Date().getFullYear()} The Laddu Story. Handcrafted with devotion in Bangalore. All rights reserved.</div>
+            <div style={{ display: 'flex', gap: '16px' }}>
+              <span>FSSAI Compliant</span>
+              <span>•</span>
+              <span>100% Pure Desi Cow Ghee</span>
+              <span>•</span>
+              <span>Zero White Sugar</span>
+            </div>
+          </div>
+        </footer>
 
       </main>
 
@@ -7164,8 +7670,405 @@ export default function App() {
         );
       })()}
 
-      {/* Invisible Google reCAPTCHA Container for Firebase Phone Auth */}
-      
+      {/* FLOATING WHATSAPP & OMNICHANNEL CONCIERGE WIDGET */}
+      <div style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 1200 }}>
+        {showConciergeMenu && (
+          <div style={{
+            position: 'absolute',
+            bottom: '70px',
+            right: '0',
+            width: '290px',
+            background: '#FFFFFF',
+            borderRadius: '16px',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
+            border: '1px solid #E2E8F0',
+            padding: '16px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '10px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #F1F5F9', paddingBottom: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10B981' }} />
+                <span style={{ fontWeight: '800', fontSize: '0.88rem', color: '#4A121E' }}>Kitchen Concierge</span>
+              </div>
+              <button onClick={() => setShowConciergeMenu(false)} style={{ background: 'transparent', border: 'none', color: '#94A3B8', fontSize: '0.9rem', cursor: 'pointer', padding: 0 }}>✕</button>
+            </div>
+            
+            <a
+              href="https://wa.me/919343207515?text=Namaste!%20I%20am%20chatting%20from%20The%20Laddu%20Story%20Storefront."
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                background: '#ECFDF5',
+                border: '1px solid #A7F3D0',
+                color: '#065F46',
+                padding: '10px 12px',
+                borderRadius: '8px',
+                textDecoration: 'none',
+                fontWeight: '700',
+                fontSize: '0.82rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <span>💬 Direct Kitchen WhatsApp</span>
+            </a>
+
+            <button
+              onClick={() => { setShowConciergeMenu(false); setShowCorporateModal(true); }}
+              style={{
+                background: '#FEF3C7',
+                border: '1px solid #FDE68A',
+                color: '#92400E',
+                padding: '10px 12px',
+                borderRadius: '8px',
+                fontWeight: '700',
+                fontSize: '0.82rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                cursor: 'pointer',
+                textAlign: 'left'
+              }}
+            >
+              <span>🎁 Corporate Gifting & Tasting Box</span>
+            </button>
+
+            <a
+              href={BRAND_CHANNELS.INSTAGRAM}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                background: '#FFF1F2',
+                border: '1px solid #FECDD3',
+                color: '#9F1239',
+                padding: '10px 12px',
+                borderRadius: '8px',
+                textDecoration: 'none',
+                fontWeight: '700',
+                fontSize: '0.82rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <span>📸 Instagram: @theladdustory</span>
+            </a>
+
+            <a
+              href={BRAND_CHANNELS.GOOGLE_PROFILE}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                background: '#EFF6FF',
+                border: '1px solid #BFDBFE',
+                color: '#1E40AF',
+                padding: '10px 12px',
+                borderRadius: '8px',
+                textDecoration: 'none',
+                fontWeight: '700',
+                fontSize: '0.82rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <span>⭐ Google Profile & Reviews</span>
+            </a>
+          </div>
+        )}
+
+        <button
+          onClick={() => setShowConciergeMenu(prev => !prev)}
+          title="Direct Kitchen WhatsApp Concierge"
+          style={{
+            width: '56px',
+            height: '56px',
+            borderRadius: '50%',
+            background: '#25D366',
+            color: '#FFFFFF',
+            border: 'none',
+            fontSize: '1.7rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            boxShadow: '0 4px 18px rgba(37, 211, 102, 0.45)',
+            transition: 'transform 0.2s',
+            position: 'relative'
+          }}
+        >
+          <span>💬</span>
+          <span style={{ position: 'absolute', top: '2px', right: '2px', width: '12px', height: '12px', borderRadius: '50%', background: '#EF4444', border: '2px solid #FFFFFF' }} />
+        </button>
+      </div>
+
+      {/* CORPORATE GIFTING & TASTING BOX MODAL */}
+      {showCorporateModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(26, 4, 10, 0.75)',
+          backdropFilter: 'blur(5px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 2000,
+          padding: '16px'
+        }}>
+          <div style={{
+            background: '#FFFFFF',
+            borderRadius: '20px',
+            maxWidth: '620px',
+            width: '100%',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            padding: '28px',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.3)',
+            border: '2px solid #F59E0B',
+            position: 'relative'
+          }}>
+            {/* Close Button */}
+            <button
+              onClick={() => { setShowCorporateModal(false); setCorporateSuccessMsg(''); }}
+              style={{
+                position: 'absolute',
+                top: '18px',
+                right: '18px',
+                background: '#FAF6F0',
+                border: 'none',
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                fontSize: '1rem',
+                color: '#64748B',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              ✕
+            </button>
+
+            {/* Modal Header */}
+            <div style={{ textAlign: 'center', marginBottom: '22px' }}>
+              <div style={{ display: 'inline-block', background: '#FEF3C7', color: '#92400E', padding: '4px 14px', borderRadius: '12px', fontSize: '0.74rem', fontWeight: '800', marginBottom: '8px' }}>
+                🎁 B2B & BULK CURATION
+              </div>
+              <h3 style={{ margin: '0 0 6px', fontSize: '1.45rem', fontWeight: '800', color: '#4A121E' }}>
+                Corporate Gifting & Tasting Box Request
+              </h3>
+              <p style={{ margin: 0, fontSize: '0.84rem', color: '#64748B', lineHeight: 1.45 }}>
+                Pure Desi Cow Ghee artisanal laddus in bespoke festive boxes. Custom branding sleeves and pan-India doorstep delivery available.
+              </p>
+            </div>
+
+            {corporateSuccessMsg ? (
+              <div style={{ textAlign: 'center', padding: '24px 12px' }}>
+                <div style={{ fontSize: '3rem', marginBottom: '12px' }}>🎉</div>
+                <h4 style={{ margin: '0 0 8px', fontSize: '1.2rem', color: '#065F46', fontWeight: '800' }}>
+                  Inquiry Received!
+                </h4>
+                <p style={{ fontSize: '0.9rem', color: '#334155', lineHeight: 1.5, marginBottom: '20px' }}>
+                  {corporateSuccessMsg}
+                </p>
+                <button
+                  onClick={() => { setShowCorporateModal(false); setCorporateSuccessMsg(''); }}
+                  style={{ background: '#4A121E', color: '#FFFFFF', border: 'none', padding: '10px 24px', borderRadius: '8px', fontWeight: '800', cursor: 'pointer' }}
+                >
+                  Done
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleCorporateSubmit}>
+                {/* Box Count Preset Selector */}
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: '800', color: '#4A121E', marginBottom: '6px' }}>
+                    ESTIMATED BOX QUANTITY (TIERED BULK PRICING)
+                  </label>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+                    {['25 Boxes', '50 Boxes', '100 Boxes', '250+ Boxes'].map(qty => (
+                      <button
+                        key={qty}
+                        type="button"
+                        onClick={() => setCorporateForm({ ...corporateForm, count: qty })}
+                        style={{
+                          background: corporateForm.count === qty ? '#4A121E' : '#FAF6F0',
+                          color: corporateForm.count === qty ? '#FFFFFF' : '#4A121E',
+                          border: corporateForm.count === qty ? '2px solid #F59E0B' : '1px solid #E2E8F0',
+                          padding: '10px 4px',
+                          borderRadius: '8px',
+                          fontWeight: '800',
+                          fontSize: '0.8rem',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {qty}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Box Type / Packaging Choice */}
+                <div style={{ marginBottom: '14px' }}>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: '800', color: '#4A121E', marginBottom: '4px' }}>
+                    PREFERRED PACKAGING & ASSORTMENT
+                  </label>
+                  <select
+                    value={corporateForm.boxType}
+                    onChange={e => setCorporateForm({ ...corporateForm, boxType: e.target.value })}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1.5px solid #CBD5E1', fontSize: '0.88rem', background: '#FAF6F0' }}
+                  >
+                    <option value="Luxe 4-Millet Assortment (Pure Cow Ghee)">Luxe 4-Millet Assortment (Ragi Walnut, Till Sesame, Sattu, Quinoa)</option>
+                    <option value="Royal Festive Gold Box (Dry Fruits & Dates)">Royal Festive Gold Box (Dates Dry Fruit, Dates Pops, Makhana)</option>
+                    <option value="Maternal & Wellness Special (Post Delivery / Jawar Panjeeri)">Maternal & Wellness Special (Post Delivery / Jawar Panjeeri)</option>
+                    <option value="Custom Curated Hamper (With Logo Branding)">Custom Curated Hamper (With Corporate Logo Sleeves)</option>
+                    <option value="Complimentary Sample Tasting Box for Office">Complimentary Sample Tasting Box for Office Evaluation</option>
+                  </select>
+                </div>
+
+                {/* Contact Name & Company */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: '800', color: '#4A121E', marginBottom: '4px' }}>
+                      CONTACT PERSON *
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Navin Bhasin"
+                      value={corporateForm.name}
+                      onChange={e => setCorporateForm({ ...corporateForm, name: e.target.value })}
+                      required
+                      style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: '8px', border: '1.5px solid #CBD5E1', fontSize: '0.88rem' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: '800', color: '#4A121E', marginBottom: '4px' }}>
+                      COMPANY / ORGANIZATION
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Acme Tech / Family"
+                      value={corporateForm.company}
+                      onChange={e => setCorporateForm({ ...corporateForm, company: e.target.value })}
+                      style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: '8px', border: '1.5px solid #CBD5E1', fontSize: '0.88rem' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Phone & Email */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: '800', color: '#4A121E', marginBottom: '4px' }}>
+                      MOBILE NUMBER (WHATSAPP) *
+                    </label>
+                    <input
+                      type="tel"
+                      placeholder="e.g. 9343207515"
+                      value={corporateForm.phone}
+                      onChange={e => setCorporateForm({ ...corporateForm, phone: e.target.value })}
+                      required
+                      style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: '8px', border: '1.5px solid #CBD5E1', fontSize: '0.88rem' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: '800', color: '#4A121E', marginBottom: '4px' }}>
+                      OFFICIAL EMAIL [OPTIONAL]
+                    </label>
+                    <input
+                      type="email"
+                      placeholder="name@company.com"
+                      value={corporateForm.email}
+                      onChange={e => setCorporateForm({ ...corporateForm, email: e.target.value })}
+                      style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: '8px', border: '1.5px solid #CBD5E1', fontSize: '0.88rem' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Occasion / Event */}
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: '800', color: '#4A121E', marginBottom: '4px' }}>
+                    OCCASION / TIMELINE
+                  </label>
+                  <select
+                    value={corporateForm.occasion}
+                    onChange={e => setCorporateForm({ ...corporateForm, occasion: e.target.value })}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1.5px solid #CBD5E1', fontSize: '0.88rem', background: '#FAF6F0' }}
+                  >
+                    <option value="Diwali / Festive Corporate Gifting">Diwali / Festive Corporate Gifting</option>
+                    <option value="New Year / Annual Company Celebration">New Year / Annual Company Celebration</option>
+                    <option value="Employee Health & Wellness Milestone">Employee Health & Wellness Milestone</option>
+                    <option value="Client Appreciation & Premium Favors">Client Appreciation & Premium Favors</option>
+                    <option value="Wedding / Family Celebration Favors">Wedding / Family Celebration Favors</option>
+                  </select>
+                </div>
+
+                {/* Custom Note */}
+                <div style={{ marginBottom: '18px' }}>
+                  <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: '800', color: '#4A121E', marginBottom: '4px' }}>
+                    ADDITIONAL REQUIREMENTS / OFFICE ADDRESS FOR SAMPLES
+                  </label>
+                  <textarea
+                    rows={2}
+                    placeholder="e.g. Please deliver tasting samples to our office in Whitefield, Bangalore."
+                    value={corporateForm.customNote}
+                    onChange={e => setCorporateForm({ ...corporateForm, customNote: e.target.value })}
+                    style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: '8px', border: '1.5px solid #CBD5E1', fontSize: '0.88rem' }}
+                  />
+                </div>
+
+                {/* Actions */}
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingCorporateLead}
+                    style={{
+                      flex: 1,
+                      background: 'linear-gradient(135deg, #4A121E 0%, #831843 100%)',
+                      color: '#FFFFFF',
+                      border: 'none',
+                      padding: '13px',
+                      borderRadius: '8px',
+                      fontWeight: '800',
+                      fontSize: '0.92rem',
+                      cursor: isSubmittingCorporateLead ? 'not-allowed' : 'pointer',
+                      boxShadow: '0 4px 14px rgba(74, 18, 30, 0.3)'
+                    }}
+                  >
+                    {isSubmittingCorporateLead ? '⏳ Sending Inquiry...' : '📩 Submit Corporate Inquiry →'}
+                  </button>
+
+                  <a
+                    href={`https://wa.me/919343207515?text=${encodeURIComponent(`Namaste! I am interested in Corporate Gifting for ${corporateForm.company || 'my organization'}. Estimated quantity: ${corporateForm.count}.`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      background: '#059669',
+                      color: '#FFFFFF',
+                      textDecoration: 'none',
+                      padding: '13px 18px',
+                      borderRadius: '8px',
+                      fontWeight: '800',
+                      fontSize: '0.88rem',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    💬 WhatsApp
+                  </a>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
 
     </div>
   );
