@@ -655,6 +655,17 @@ export default function App() {
   const [isLoadingLeads, setIsLoadingLeads] = useState(false);
   const [showConciergeMenu, setShowConciergeMenu] = useState(false);
 
+  // Staff WhatsApp & Omnichannel Interactive Testing State
+  const [testWaPhone, setTestWaPhone] = useState('9343207515');
+  const [testWaName, setTestWaName] = useState('Priya Sharma');
+  const [testWaTemplate, setTestWaTemplate] = useState('ORDER_CONFIRM');
+  const [testWaStatus, setTestWaStatus] = useState('PREPARING');
+  const [testWaDriverName, setTestWaDriverName] = useState('Ramesh Kumar');
+  const [testWaDriverPhone, setTestWaDriverPhone] = useState('9876543210');
+  const [testGenSku, setTestGenSku] = useState('RAGI-WALNUT');
+  const [testGenSource, setTestGenSource] = useState('INSTAGRAM');
+  const [copyLinkNotice, setCopyLinkNotice] = useState('');
+
   // Orders Store (Supabase PostgreSQL is primary)
   const [orders, setOrders] = useState(() => {
     try {
@@ -2548,27 +2559,6 @@ export default function App() {
                   🛍️ Order Laddus
                 </button>
 
-                <button
-                  id="nav-corporate-btn"
-                  onClick={() => setShowCorporateModal(true)}
-                  style={{
-                    background: 'linear-gradient(135deg, #B45309 0%, #D97706 100%)',
-                    color: '#FFFFFF',
-                    border: '1px solid #FDE68A',
-                    padding: '8px 14px',
-                    borderRadius: '8px',
-                    fontWeight: '800',
-                    fontSize: '0.85rem',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
-                  }}
-                >
-                  <span>🎁 Corporate Gifting</span>
-                </button>
-
                 {/* Customer Login / My Orders Badge */}
                 {customerUser ? (
                   <div style={{ display: 'flex', alignItems: 'center', background: '#FDE68A', borderRadius: '8px', padding: '2px 4px' }}>
@@ -2712,38 +2702,6 @@ export default function App() {
         </div>
       </header>
 
-      {/* OMNICHANNEL SOCIAL & BRAND CONNECT BAR */}
-      <div style={{ background: '#2B060F', borderBottom: '1px solid #4A121E', padding: '7px 20px', color: '#FDE68A', fontSize: '0.8rem' }}>
-        <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-            <span style={{ color: '#F8FAFC', fontWeight: '700', fontSize: '0.78rem' }}>Follow & Connect:</span>
-            <a href={BRAND_CHANNELS.INSTAGRAM} target="_blank" rel="noopener noreferrer" style={{ color: '#FDE68A', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: '700', fontSize: '0.78rem' }}>
-              <span>📸 Instagram</span> <span style={{ opacity: 0.8, fontSize: '0.72rem' }}>(@theladdustory)</span>
-            </a>
-            <a href={BRAND_CHANNELS.FACEBOOK} target="_blank" rel="noopener noreferrer" style={{ color: '#FDE68A', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: '700', fontSize: '0.78rem' }}>
-              <span>📘 Facebook</span>
-            </a>
-            <a href={BRAND_CHANNELS.WHATSAPP_LINK} target="_blank" rel="noopener noreferrer" style={{ color: '#34D399', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: '700', fontSize: '0.78rem' }}>
-              <span>💬 WhatsApp (9343207515)</span>
-            </a>
-            <a href={BRAND_CHANNELS.YOUTUBE} target="_blank" rel="noopener noreferrer" style={{ color: '#F87171', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: '700', fontSize: '0.78rem' }}>
-              <span>📺 YouTube (@TheLadduStory)</span>
-            </a>
-            <a href={BRAND_CHANNELS.GOOGLE_PROFILE} target="_blank" rel="noopener noreferrer" style={{ color: '#60A5FA', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: '700', fontSize: '0.78rem' }}>
-              <span>⭐ Google Profile & Reviews</span>
-            </a>
-          </div>
-          <div>
-            <button 
-              onClick={() => setShowCorporateModal(true)}
-              style={{ background: '#F59E0B', color: '#350B15', border: 'none', padding: '3px 10px', borderRadius: '6px', fontSize: '0.74rem', fontWeight: '800', cursor: 'pointer' }}
-            >
-              🎁 Corporate Inquiries & Tasting Box →
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* SUB-HEADER STATUS BAR */}
       <div style={{ background: '#FFFBEB', borderBottom: '1px solid #FDE68A', padding: '7px 20px', fontSize: '0.8rem', color: '#78350F', textAlign: 'center', fontWeight: '500' }}>
         <span>🌿 Pure Desi Cow Ghee & Unrefined Jaggery • Zero White Sugar • Freshly Prepared in Bangalore</span>
@@ -2753,19 +2711,6 @@ export default function App() {
           </span>
         )}
       </div>
-
-      {/* DYNAMIC REFERRAL TRAFFIC WELCOME BANNER */}
-      {trafficSource && (
-        <div style={{ background: 'linear-gradient(90deg, #FEF3C7 0%, #FDE68A 100%)', borderBottom: '1px solid #F59E0B', padding: '8px 20px', color: '#78350F', fontSize: '0.82rem', fontWeight: '700', textAlign: 'center', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px' }}>
-          <span>✨ Namaste! Welcome to our Kitchen from <strong>{trafficSource}</strong>! Every laddu is handcrafted to order in 100% Pure Desi Cow Ghee.</span>
-          <button 
-            onClick={() => setShowCorporateModal(true)} 
-            style={{ background: '#78350F', color: '#FFF', border: 'none', padding: '3px 10px', borderRadius: '4px', fontSize: '0.74rem', fontWeight: '800', cursor: 'pointer' }}
-          >
-            Request Tasting Box
-          </button>
-        </div>
-      )}
 
       {/* ADDED TO CART TOAST NOTIFICATION */}
       {addedToast && (
@@ -2817,72 +2762,6 @@ export default function App() {
                   <p style={{ margin: 0, fontSize: '0.9rem', color: '#E2E8F0', lineHeight: 1.5 }}>
                     Crafted strictly with Pure Desi Cow Ghee and Unrefined Jaggery. Free of artificial colors, preservatives, and white sugar.
                   </p>
-                </div>
-              </div>
-
-              {/* B2B CORPORATE GIFTING & TASTING BOX SHOWCASE CARD */}
-              <div style={{
-                background: 'linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 50%, #FDE68A 100%)',
-                border: '2px solid #F59E0B',
-                borderRadius: '16px',
-                padding: '20px 24px',
-                marginBottom: '24px',
-                boxShadow: '0 4px 15px rgba(245, 158, 11, 0.15)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: '16px'
-              }}>
-                <div style={{ maxWidth: '780px' }}>
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#78350F', color: '#FFF', padding: '3px 10px', borderRadius: '8px', fontSize: '0.72rem', fontWeight: '800', marginBottom: '8px' }}>
-                    <span>🎁 B2B CORPORATE GIFTING & EVENT HAMPERS</span>
-                  </div>
-                  <h3 style={{ margin: '0 0 6px', fontSize: '1.25rem', fontWeight: '800', color: '#4A121E' }}>
-                    Elevate Festive & Employee Gifting with Pure Artisanal Laddus
-                  </h3>
-                  <p style={{ margin: 0, fontSize: '0.86rem', color: '#78350F', lineHeight: 1.5 }}>
-                    Luxe handcrafted wooden & gold-embossed gift boxes, custom corporate logo sleeves, and healthy guilt-free treats made with 100% Pure Desi Cow Ghee and Organic Millets. Bulk discounts for 25 to 500+ boxes.
-                  </p>
-                </div>
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                  <button
-                    id="hero-request-quote-btn"
-                    onClick={() => setShowCorporateModal(true)}
-                    style={{
-                      background: '#4A121E',
-                      color: '#FFFFFF',
-                      border: 'none',
-                      padding: '11px 20px',
-                      borderRadius: '8px',
-                      fontWeight: '800',
-                      fontSize: '0.88rem',
-                      cursor: 'pointer',
-                      boxShadow: '0 4px 12px rgba(74, 18, 30, 0.2)'
-                    }}
-                  >
-                    ✨ Request Tasting Box / Custom Quote
-                  </button>
-                  <a
-                    href="https://wa.me/919343207515?text=Namaste!%20I%20am%20inquiring%20about%20Corporate%20Gifting%20%26%20Bulk%20Boxes%20from%20The%20Laddu%20Story."
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      background: '#059669',
-                      color: '#FFFFFF',
-                      textDecoration: 'none',
-                      padding: '11px 18px',
-                      borderRadius: '8px',
-                      fontWeight: '800',
-                      fontSize: '0.88rem',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      boxShadow: '0 4px 12px rgba(5, 150, 105, 0.2)'
-                    }}
-                  >
-                    💬 WhatsApp Concierge
-                  </a>
                 </div>
               </div>
 
@@ -3611,6 +3490,64 @@ export default function App() {
         {/* ------------------------------------------------------------- */}
         {activeTab === 'admin' && (
           <div>
+            {/* STAFF OMNICHANNEL & SOCIAL PRESENCE PREVIEW BAR */}
+            <div style={{
+              background: 'linear-gradient(135deg, #2B060F 0%, #4A121E 100%)',
+              border: '2px solid #F59E0B',
+              borderRadius: '16px',
+              padding: '14px 20px',
+              color: '#FDE68A',
+              marginBottom: '18px',
+              boxShadow: '0 6px 20px rgba(74, 18, 30, 0.3)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '12px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                <span style={{ background: '#F59E0B', color: '#2B060F', padding: '4px 10px', borderRadius: '6px', fontWeight: '800', fontSize: '0.74rem', letterSpacing: '0.5px' }}>
+                  STAFF OMS ONLY
+                </span>
+                <span style={{ color: '#F1F5F9', fontWeight: '700', fontSize: '0.82rem' }}>
+                  Brand Channels Sandbox (Hidden from Customers):
+                </span>
+                <a href={BRAND_CHANNELS.INSTAGRAM} target="_blank" rel="noopener noreferrer" style={{ background: 'rgba(255,255,255,0.1)', padding: '4px 10px', borderRadius: '6px', color: '#FDE68A', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: '700', fontSize: '0.78rem' }}>
+                  <span>📸 Instagram</span> <span style={{ opacity: 0.8, fontSize: '0.7rem' }}>(@theladdustory)</span>
+                </a>
+                <a href={BRAND_CHANNELS.FACEBOOK} target="_blank" rel="noopener noreferrer" style={{ background: 'rgba(255,255,255,0.1)', padding: '4px 10px', borderRadius: '6px', color: '#FDE68A', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: '700', fontSize: '0.78rem' }}>
+                  <span>📘 Facebook</span>
+                </a>
+                <a href={BRAND_CHANNELS.WHATSAPP_LINK} target="_blank" rel="noopener noreferrer" style={{ background: 'rgba(52, 211, 153, 0.2)', border: '1px solid #34D399', padding: '4px 10px', borderRadius: '6px', color: '#6EE7B7', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: '800', fontSize: '0.78rem' }}>
+                  <span>💬 WhatsApp ({BRAND_CHANNELS.WHATSAPP_NUMBER})</span>
+                </a>
+                <a href={BRAND_CHANNELS.YOUTUBE} target="_blank" rel="noopener noreferrer" style={{ background: 'rgba(239, 68, 68, 0.2)', padding: '4px 10px', borderRadius: '6px', color: '#FCA5A5', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: '700', fontSize: '0.78rem' }}>
+                  <span>📺 YouTube (@TheLadduStory)</span>
+                </a>
+                <a href={BRAND_CHANNELS.GOOGLE_PROFILE} target="_blank" rel="noopener noreferrer" style={{ background: 'rgba(59, 130, 246, 0.2)', padding: '4px 10px', borderRadius: '6px', color: '#93C5FD', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: '700', fontSize: '0.78rem' }}>
+                  <span>⭐ Google Reviews</span>
+                </a>
+              </div>
+              <div>
+                <button
+                  onClick={() => setAdminSection('social')}
+                  style={{
+                    background: adminSection === 'social' ? '#FDE68A' : '#FAF6F0',
+                    color: '#4A121E',
+                    border: 'none',
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    fontWeight: '800',
+                    fontSize: '0.82rem',
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                  }}
+                >
+                  🛠️ Open WhatsApp & Social Testing Suite →
+                </button>
+              </div>
+            </div>
+
             {/* Staff Sub-Navigation */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '14px', background: '#fff', padding: '14px 20px', borderRadius: '16px', border: '1px solid #E2E8F0' }}>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -3706,6 +3643,21 @@ export default function App() {
                   }}
                 >
                   💼 Corporate Leads ({corporateLeads.length})
+                </button>
+                <button
+                  onClick={() => setAdminSection('social')}
+                  style={{
+                    background: adminSection === 'social' ? '#4A121E' : '#F1F5F9',
+                    color: adminSection === 'social' ? '#fff' : '#475569',
+                    border: 'none',
+                    padding: '9px 16px',
+                    borderRadius: '8px',
+                    fontWeight: '800',
+                    fontSize: '0.88rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  🌐 Social & WhatsApp Hub
                 </button>
               </div>
 
@@ -4355,6 +4307,79 @@ export default function App() {
                                 </select>
                               </div>
 
+                              {/* WHATSAPP LIFECYCLE ACTION BUTTONS FOR STAFF */}
+                              {(() => {
+                                const patronPhone = (o.phone || '').replace(/\D/g, '').slice(-10);
+                                const patronName = o.name || 'Patron';
+                                const porter = getPorterDetails(o.notes);
+
+                                // 1. Order Confirmation Message
+                                const waReceiptText = `Namaste ${patronName}! 🙏\n\nThank you for choosing *The Laddu Story*.\n\n📦 *Order ID:* ${o.orderId}\n🥣 *Items:* ${o.items?.map(it => `${it.qty}x ${it.name} (${it.packLabel || it.weight || 'pack'})`).join(', ')}\n💰 *Total:* ₹${Number(o.total || 0).toLocaleString('en-IN')}\n💳 *Payment:* ${o.paymentStatus === 'PAID' ? 'Paid via UPI ✅' : 'Pending (Cash / Pay on Pickup)'}\n📍 *Fulfillment:* ${isOrderPickup ? 'Self-Pickup at Bangalore Kitchen (@15101 Tower-15, Prestige Tranquility)' : 'Doorstep Delivery via Porter'}\n\nOur kitchen has started handcrafting your laddus with 100% Pure Desi Cow Ghee. We will notify you once packed!`;
+
+                                // 2. Kitchen Ready Alert
+                                const waReadyText = `Namaste ${patronName}! 🥣✨\n\nYour artisanal order *#${o.orderId}* is freshly prepared and packed at *The Laddu Story* Bangalore kitchen!\n\n${isOrderPickup ? '📍 Your box is ready for pickup at @15101, Tower-15, Prestige Tranquility, Budigere Cross. (Contact: 9343207515)' : '🚚 Our team is assigning your Porter driver now.'}\n\nThank you for choosing pure cow ghee & unrefined jaggery goodness!`;
+
+                                // 3. Porter Dispatched Alert
+                                const waPorterText = `Namaste ${patronName}! 🚚\n\nYour order *#${o.orderId}* is out for delivery via Porter!\n\n👤 *Driver:* ${porter?.driver || 'Assigned Driver'}${porter?.phone ? ` (+91 ${porter.phone})` : ''}\n📦 *Booking Ref:* ${porter?.booking || 'Porter Booking'}\n💵 *Porter Fare:* ${porter?.fare ? `₹${porter.fare} (Pay to driver)` : 'As per Porter app'}\n\nPlease keep your phone reachable. Enjoy your fresh laddus!`;
+
+                                // 4. Review & Feedback Request
+                                const waReviewText = `Namaste ${patronName}! 🙏❤️\n\nWe hope you and your family loved the pure Desi Cow Ghee aroma and authentic taste of *The Laddu Story* laddus from order *#${o.orderId}*!\n\nCould you take 30 seconds to share your review on Google? It means the world to our kitchen:\n⭐ *Review Link:* ${BRAND_CHANNELS.GOOGLE_REVIEW_LINK}\n\nYou can also leave tasting notes on our website: https://theladdustory.github.io\n\nWith devotion,\nTeam The Laddu Story 🌿`;
+
+                                const waReceiptUrl = `https://wa.me/91${patronPhone}?text=${encodeURIComponent(waReceiptText)}`;
+                                const waReadyUrl = `https://wa.me/91${patronPhone}?text=${encodeURIComponent(waReadyText)}`;
+                                const waPorterUrl = `https://wa.me/91${patronPhone}?text=${encodeURIComponent(waPorterText)}`;
+                                const waReviewUrl = `https://wa.me/91${patronPhone}?text=${encodeURIComponent(waReviewText)}`;
+
+                                return (
+                                  <div style={{ marginTop: '12px', borderTop: '1px dashed #CBD5E1', paddingTop: '10px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                                      <span style={{ fontSize: '0.72rem', fontWeight: '800', color: '#047857', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <span>💬</span> WHATSAPP DISPATCH (STAFF):
+                                      </span>
+                                      <span style={{ fontSize: '0.7rem', color: '#64748B' }}>+91 {patronPhone}</span>
+                                    </div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                                      <a
+                                        href={waReceiptUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        title="Send order confirmation receipt via WhatsApp"
+                                        style={{ background: '#ECFDF5', border: '1px solid #A7F3D0', color: '#065F46', padding: '5px 8px', borderRadius: '6px', textDecoration: 'none', fontSize: '0.72rem', fontWeight: '700', textAlign: 'center', display: 'block' }}
+                                      >
+                                        🧾 1. Receipt
+                                      </a>
+                                      <a
+                                        href={waReadyUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        title="Send ready for pickup alert via WhatsApp"
+                                        style={{ background: '#FEF3C7', border: '1px solid #FDE68A', color: '#92400E', padding: '5px 8px', borderRadius: '6px', textDecoration: 'none', fontSize: '0.72rem', fontWeight: '700', textAlign: 'center', display: 'block' }}
+                                      >
+                                        🥣 2. Ready Alert
+                                      </a>
+                                      <a
+                                        href={waPorterUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        title="Send driver name and Porter dispatch details via WhatsApp"
+                                        style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', color: '#1E40AF', padding: '5px 8px', borderRadius: '6px', textDecoration: 'none', fontSize: '0.72rem', fontWeight: '700', textAlign: 'center', display: 'block' }}
+                                      >
+                                        🚚 3. Porter Dispatched
+                                      </a>
+                                      <a
+                                        href={waReviewUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        title="Send Google review link request via WhatsApp"
+                                        style={{ background: '#FFF1F2', border: '1px solid #FECDD3', color: '#9F1239', padding: '5px 8px', borderRadius: '6px', textDecoration: 'none', fontSize: '0.72rem', fontWeight: '700', textAlign: 'center', display: 'block' }}
+                                      >
+                                        ⭐ 4. Review Link
+                                      </a>
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+
                             </div>
                           );
                         })}
@@ -4845,6 +4870,441 @@ export default function App() {
               );
             })()}
 
+            {/* VIEW 5: OMNICHANNEL SOCIAL & WHATSAPP INTERACTIVE TESTING HUB */}
+            {adminSection === 'social' && (() => {
+              const currentOrigin = typeof window !== 'undefined' ? window.location.origin + window.location.pathname.replace(/\/index\.html$/, '') : 'https://theladdustory.github.io';
+              const cleanBaseUrl = currentOrigin.endsWith('/') ? currentOrigin.slice(0, -1) : currentOrigin;
+              const generatedTestUrl = `${cleanBaseUrl}/?source=${testGenSource.toLowerCase()}&sku=${testGenSku}`;
+
+              // Helper to generate test WhatsApp messages
+              const getSimulatedWaText = () => {
+                const cleanPhone = (testWaPhone || '9343207515').replace(/\D/g, '').slice(-10);
+                const name = testWaName.trim() || 'Patron';
+
+                if (testWaTemplate === 'ORDER_CONFIRM') {
+                  return `*Namaste ${name}! 🙏*\n\n` +
+                    `Your order *TLS-TEST-1001* has been confirmed at *The Laddu Story* (Pure Cow Ghee & Jaggery Artisanal Kitchen).\n\n` +
+                    `📦 *Items Ordered:*\n• 1x Ragi Walnut Laddu (500g) - ₹600\n• 1x Sattu Almond Laddu (500g) - ₹550\n\n` +
+                    `💰 *Total Amount:* ₹1,150\n` +
+                    `📍 *Fulfillment:* Store Self-Pickup (@15101, Tower-15, Prestige Tranquility, Budigere Cross, BLR)\n` +
+                    `💳 *Payment:* UPI / Verified\n\n` +
+                    `Freshly roasted with 100% Pure Desi Cow Ghee & Zero White Sugar! 🌿`;
+                }
+
+                if (testWaTemplate === 'STATUS_UPDATE') {
+                  if (testWaStatus === 'READY_FOR_PICKUP') {
+                    return `*Namaste ${name}! 📦*\n\n` +
+                      `Your fresh laddu box for order *TLS-TEST-1001* is *PACKED & READY FOR PICKUP*!\n\n` +
+                      `📍 *Pickup Location:* @15101, Tower-15, Prestige Tranquility, Budigere Cross, Bangalore - 560049\n` +
+                      `📞 *Kitchen Contact:* 9343207515\n\n` +
+                      `Please collect at your convenience. Enjoy the pure cow ghee taste! 🙏`;
+                  }
+                  return `*Namaste ${name}! 👨‍🍳*\n\n` +
+                    `Great news! Your order *TLS-TEST-1001* is currently *BEING PREPARED* in our kitchen with pure desi cow ghee and organic jaggery.\n\n` +
+                    `We will notify you as soon as your batch is fresh and packed!`;
+                }
+
+                if (testWaTemplate === 'PORTER_DISPATCH') {
+                  return `*Namaste ${name}! 🛵*\n\n` +
+                    `Your order *TLS-TEST-1001* has been dispatched via Porter Doorstep Delivery!\n\n` +
+                    `👤 *Driver Name:* ${testWaDriverName || 'Ramesh Kumar'}\n` +
+                    `📞 *Driver Phone:* ${testWaDriverPhone || '9876543210'}\n` +
+                    `📦 *Live Tracking:* https://porter.in/track/test-porter-1001\n\n` +
+                    `Please ensure someone is available at the delivery address to receive the fresh box!`;
+                }
+
+                if (testWaTemplate === 'REVIEW_REQUEST') {
+                  return `*Namaste ${name}! 🙏*\n\n` +
+                    `We hope you and your family enjoyed the fresh artisanal laddus from *The Laddu Story*!\n\n` +
+                    `As an artisanal kitchen, your feedback means the world to us. Could you take 30 seconds to share your review on our Google Profile?\n\n` +
+                    `⭐ *Write a Google Review:* ${BRAND_CHANNELS.GOOGLE_REVIEW_LINK}\n\n` +
+                    `Thank you for choosing pure health and traditions! 🌿`;
+                }
+
+                if (testWaTemplate === 'CORPORATE_LEAD') {
+                  return `*Namaste ${name}! 🎁*\n\n` +
+                    `This is from *The Laddu Story* (Artisanal Pure Cow Ghee & Millet Kitchen, Bangalore).\n\n` +
+                    `Thank you for inquiring about corporate gifting for your organization. We specialize in bespoke handcrafted wooden & gold festive boxes with custom branding sleeves.\n\n` +
+                    `We would be delighted to send a *complimentary sample tasting box* to your office! What address should we send it to?`;
+                }
+
+                return '';
+              };
+
+              const simulatedText = getSimulatedWaText();
+              const simulatedWaUrl = `https://wa.me/91${(testWaPhone || '9343207515').replace(/\D/g, '').slice(-10)}?text=${encodeURIComponent(simulatedText)}`;
+
+              return (
+                <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #E2E8F0', padding: '24px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
+                  
+                  {/* Header */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', marginBottom: '24px', borderBottom: '1px solid #F1F5F9', paddingBottom: '16px' }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1.35rem', fontWeight: '800', color: '#4A121E', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span>🌐 Omnichannel & WhatsApp Interactive Testing Suite</span>
+                        <span style={{ fontSize: '0.74rem', background: '#DEF7EC', color: '#03543F', padding: '3px 8px', borderRadius: '8px', border: '1px solid #31C48D' }}>
+                          Staff OMS Exclusive
+                        </span>
+                      </h3>
+                      <p style={{ margin: '4px 0 0', fontSize: '0.84rem', color: '#64748B' }}>
+                        Test and verify all 5 WhatsApp communication workflows, check brand social links, and generate campaign deep-links before enabling for customers.
+                      </p>
+                    </div>
+
+                    <div>
+                      <span style={{ fontSize: '0.8rem', color: '#B45309', background: '#FEF3C7', padding: '6px 12px', borderRadius: '8px', fontWeight: '700' }}>
+                        🔒 Social presence is currently HIDDEN from customer storefront
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* SECTION 1: HOW WHATSAPP INTEGRATION WORKS */}
+                  <div style={{ background: '#F8FAFC', border: '1.5px solid #CBD5E1', borderRadius: '12px', padding: '16px 20px', marginBottom: '24px' }}>
+                    <h4 style={{ margin: '0 0 8px', fontSize: '1rem', color: '#0F172A', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span>💡 How WhatsApp Integration Operates (Zero-Cost Direct Protocol)</span>
+                    </h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px', fontSize: '0.82rem', color: '#334155', lineHeight: 1.5 }}>
+                      <div>
+                        <strong>1. Protocol:</strong> Uses official WhatsApp URI schemes (`wa.me/91...`).
+                        <br/>
+                        <strong>2. Zero Overhead:</strong> No ₹1,500/month WhatsApp Business API charges or third-party CRM fees.
+                      </div>
+                      <div>
+                        <strong>3. Universal Compatibility:</strong> Works seamlessly on Android, iOS, WhatsApp Web, and Desktop apps.
+                        <br/>
+                        <strong>4. Staff Full Control:</strong> Staff can preview and inspect any customer message before dispatching.
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* SECTION 2: INTERACTIVE WHATSAPP WORKFLOW TESTER */}
+                  <div style={{ background: '#FFFBEB', border: '2px solid #FDE68A', borderRadius: '16px', padding: '22px', marginBottom: '28px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+                      <h4 style={{ margin: 0, fontSize: '1.15rem', color: '#78350F', fontWeight: '800' }}>
+                        💬 WhatsApp Workflow Simulator (Test Entire Cycle)
+                      </h4>
+                      <span style={{ fontSize: '0.78rem', color: '#92400E', fontWeight: '700' }}>
+                        Select any workflow below to test the live message output
+                      </span>
+                    </div>
+
+                    {/* Step Tabs for Workflow Selection */}
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '18px' }}>
+                      {[
+                        { key: 'ORDER_CONFIRM', label: '1. Order Confirmation' },
+                        { key: 'STATUS_UPDATE', label: '2. Kitchen Status Update' },
+                        { key: 'PORTER_DISPATCH', label: '3. Porter Delivery Dispatch' },
+                        { key: 'REVIEW_REQUEST', label: '4. 5-Star Review Request' },
+                        { key: 'CORPORATE_LEAD', label: '5. Corporate Tasting Response' }
+                      ].map(t => (
+                        <button
+                          key={t.key}
+                          type="button"
+                          onClick={() => setTestWaTemplate(t.key)}
+                          style={{
+                            background: testWaTemplate === t.key ? '#78350F' : '#FFFFFF',
+                            color: testWaTemplate === t.key ? '#FFFFFF' : '#78350F',
+                            border: '1.5px solid #F59E0B',
+                            padding: '8px 14px',
+                            borderRadius: '8px',
+                            fontWeight: '800',
+                            fontSize: '0.8rem',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Test Parameters Form */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px', marginBottom: '16px', background: '#FFFFFF', padding: '16px', borderRadius: '12px', border: '1px solid #FDE68A' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: '800', color: '#78350F', marginBottom: '4px' }}>
+                          TEST RECIPIENT MOBILE NUMBER
+                        </label>
+                        <input
+                          type="tel"
+                          value={testWaPhone}
+                          onChange={e => setTestWaPhone(e.target.value)}
+                          placeholder="e.g. 9343207515"
+                          style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #CBD5E1', fontSize: '0.88rem', fontWeight: '700' }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: '800', color: '#78350F', marginBottom: '4px' }}>
+                          CUSTOMER / CLIENT NAME
+                        </label>
+                        <input
+                          type="text"
+                          value={testWaName}
+                          onChange={e => setTestWaName(e.target.value)}
+                          placeholder="e.g. Priya Sharma"
+                          style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #CBD5E1', fontSize: '0.88rem', fontWeight: '700' }}
+                        />
+                      </div>
+
+                      {testWaTemplate === 'STATUS_UPDATE' && (
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: '800', color: '#78350F', marginBottom: '4px' }}>
+                            KITCHEN STATUS TO BROADCAST
+                          </label>
+                          <select
+                            value={testWaStatus}
+                            onChange={e => setTestWaStatus(e.target.value)}
+                            style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #CBD5E1', fontSize: '0.88rem' }}
+                          >
+                            <option value="PREPARING">👨‍🍳 PREPARING (In the Ghee Kadhai)</option>
+                            <option value="READY_FOR_PICKUP">📦 READY FOR PICKUP (At Tower 15)</option>
+                          </select>
+                        </div>
+                      )}
+
+                      {testWaTemplate === 'PORTER_DISPATCH' && (
+                        <>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: '800', color: '#78350F', marginBottom: '4px' }}>
+                              PORTER DRIVER NAME
+                            </label>
+                            <input
+                              type="text"
+                              value={testWaDriverName}
+                              onChange={e => setTestWaDriverName(e.target.value)}
+                              placeholder="Driver Name"
+                              style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #CBD5E1', fontSize: '0.88rem' }}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: '800', color: '#78350F', marginBottom: '4px' }}>
+                              DRIVER MOBILE NUMBER
+                            </label>
+                            <input
+                              type="tel"
+                              value={testWaDriverPhone}
+                              onChange={e => setTestWaDriverPhone(e.target.value)}
+                              placeholder="Driver Mobile"
+                              style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #CBD5E1', fontSize: '0.88rem' }}
+                            />
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Live Preview Box */}
+                    <div style={{ marginBottom: '16px' }}>
+                      <div style={{ fontSize: '0.76rem', fontWeight: '800', color: '#78350F', marginBottom: '6px' }}>
+                        LIVE WHATSAPP MESSAGE FORMAT PREVIEW:
+                      </div>
+                      <div style={{ background: '#E2F7CB', border: '1px solid #A7F3D0', borderRadius: '12px', padding: '14px 18px', fontFamily: 'monospace', fontSize: '0.84rem', color: '#064E3B', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                        {simulatedText}
+                      </div>
+                    </div>
+
+                    {/* Launch Action */}
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <a
+                        href={simulatedWaUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          background: '#059669',
+                          color: '#FFFFFF',
+                          textDecoration: 'none',
+                          padding: '12px 22px',
+                          borderRadius: '8px',
+                          fontWeight: '800',
+                          fontSize: '0.9rem',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          boxShadow: '0 4px 12px rgba(5, 150, 105, 0.3)'
+                        }}
+                      >
+                        <span>💬 Launch Test WhatsApp Message in New Tab</span>
+                      </a>
+                      <span style={{ fontSize: '0.78rem', color: '#78350F' }}>
+                        (Will open WhatsApp with pre-filled message formatted for recipient <strong>+91 {testWaPhone}</strong>)
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* SECTION 3: CAMPAIGN DEEP-LINK GENERATOR */}
+                  <div style={{ background: '#FAF6F0', border: '1.5px solid #E2E8F0', borderRadius: '16px', padding: '22px', marginBottom: '28px' }}>
+                    <h4 style={{ margin: '0 0 6px', fontSize: '1.15rem', color: '#4A121E', fontWeight: '800' }}>
+                      🔗 Omnichannel Campaign Deep-Link Generator
+                    </h4>
+                    <p style={{ margin: '0 0 16px', fontSize: '0.82rem', color: '#64748B' }}>
+                      Create smart links for your Instagram bio, Facebook posts, or WhatsApp statuses that automatically route customers to the chosen product and record attribution.
+                    </p>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: '800', color: '#4A121E', marginBottom: '4px' }}>
+                          CHOOSE TARGET PRODUCT
+                        </label>
+                        <select
+                          value={testGenSku}
+                          onChange={e => setTestGenSku(e.target.value)}
+                          style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1.5px solid #CBD5E1', fontSize: '0.88rem', background: '#FFFFFF' }}
+                        >
+                          {products.map(p => (
+                            <option key={p.sku} value={p.sku}>
+                              {p.name} ({p.sku})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: '800', color: '#4A121E', marginBottom: '4px' }}>
+                          CHOOSE PROMOTION CHANNEL (ATTRIBUTION)
+                        </label>
+                        <select
+                          value={testGenSource}
+                          onChange={e => setTestGenSource(e.target.value)}
+                          style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1.5px solid #CBD5E1', fontSize: '0.88rem', background: '#FFFFFF' }}
+                        >
+                          <option value="INSTAGRAM">Instagram (Reel / Bio / Story)</option>
+                          <option value="FACEBOOK">Facebook (Group Post / Page)</option>
+                          <option value="WHATSAPP">WhatsApp (Status / Community Broadcast)</option>
+                          <option value="YOUTUBE">YouTube (Shorts / Description)</option>
+                          <option value="CORPORATE_EMAIL">Corporate Email Pitch</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <input
+                        type="text"
+                        readOnly
+                        value={generatedTestUrl}
+                        style={{ flex: 1, minWidth: '280px', padding: '11px 14px', borderRadius: '8px', border: '1.5px solid #CBD5E1', background: '#FFFFFF', fontWeight: '700', fontSize: '0.88rem', color: '#1E293B' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(generatedTestUrl);
+                          setCopyLinkNotice('✓ Copied to clipboard!');
+                          setTimeout(() => setCopyLinkNotice(''), 2500);
+                        }}
+                        style={{ background: '#4A121E', color: '#FFFFFF', border: 'none', padding: '11px 18px', borderRadius: '8px', fontWeight: '800', fontSize: '0.85rem', cursor: 'pointer' }}
+                      >
+                        {copyLinkNotice || '📋 Copy Link'}
+                      </button>
+                      <a
+                        href={generatedTestUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ background: '#F59E0B', color: '#350B15', textDecoration: 'none', padding: '11px 16px', borderRadius: '8px', fontWeight: '800', fontSize: '0.85rem' }}
+                      >
+                        🚀 Test Link in New Tab
+                      </a>
+                    </div>
+                  </div>
+
+                  {/* SECTION 4: OFFICIAL CHANNELS VERIFICATION GRID */}
+                  <div>
+                    <h4 style={{ margin: '0 0 12px', fontSize: '1.15rem', color: '#4A121E', fontWeight: '800' }}>
+                      🌐 Verified Social Profiles & Direct Test Buttons
+                    </h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
+                      
+                      {/* Instagram */}
+                      <div style={{ background: '#FFF1F2', border: '1px solid #FECDD3', borderRadius: '12px', padding: '16px' }}>
+                        <div style={{ fontWeight: '800', color: '#9F1239', fontSize: '0.92rem', marginBottom: '4px' }}>
+                          📸 Instagram Handle
+                        </div>
+                        <div style={{ fontSize: '0.82rem', color: '#475569', marginBottom: '10px' }}>
+                          @theladdustory
+                        </div>
+                        <a href={BRAND_CHANNELS.INSTAGRAM} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', background: '#9F1239', color: '#FFFFFF', textDecoration: 'none', padding: '6px 12px', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '700' }}>
+                          ↗ Test Instagram Profile
+                        </a>
+                      </div>
+
+                      {/* Facebook */}
+                      <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '12px', padding: '16px' }}>
+                        <div style={{ fontWeight: '800', color: '#1E40AF', fontSize: '0.92rem', marginBottom: '4px' }}>
+                          📘 Facebook Page
+                        </div>
+                        <div style={{ fontSize: '0.82rem', color: '#475569', marginBottom: '10px' }}>
+                          The Laddu Story
+                        </div>
+                        <a href={BRAND_CHANNELS.FACEBOOK} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', background: '#1E40AF', color: '#FFFFFF', textDecoration: 'none', padding: '6px 12px', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '700' }}>
+                          ↗ Test Facebook Page
+                        </a>
+                      </div>
+
+                      {/* WhatsApp */}
+                      <div style={{ background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: '12px', padding: '16px' }}>
+                        <div style={{ fontWeight: '800', color: '#065F46', fontSize: '0.92rem', marginBottom: '4px' }}>
+                          💬 WhatsApp Number
+                        </div>
+                        <div style={{ fontSize: '0.82rem', color: '#475569', marginBottom: '10px' }}>
+                          +91 {BRAND_CHANNELS.WHATSAPP_NUMBER}
+                        </div>
+                        <a href={BRAND_CHANNELS.WHATSAPP_LINK} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', background: '#059669', color: '#FFFFFF', textDecoration: 'none', padding: '6px 12px', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '700' }}>
+                          ↗ Test WhatsApp Chat
+                        </a>
+                      </div>
+
+                      {/* YouTube */}
+                      <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '12px', padding: '16px' }}>
+                        <div style={{ fontWeight: '800', color: '#991B1B', fontSize: '0.92rem', marginBottom: '4px' }}>
+                          📺 YouTube Channel
+                        </div>
+                        <div style={{ fontSize: '0.82rem', color: '#475569', marginBottom: '10px' }}>
+                          @TheLadduStory
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          <a href={BRAND_CHANNELS.YOUTUBE} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', background: '#DC2626', color: '#FFFFFF', textDecoration: 'none', padding: '6px 12px', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '700' }}>
+                            ↗ Test Channel Link
+                          </a>
+                          <a href={BRAND_CHANNELS.YOUTUBE_CREATE} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', background: '#FFFFFF', border: '1px solid #DC2626', color: '#DC2626', textDecoration: 'none', padding: '6px 10px', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '700' }}>
+                            + 1-Click Create
+                          </a>
+                        </div>
+                      </div>
+
+                      {/* Google Profile */}
+                      <div style={{ background: '#FAF5FF', border: '1px solid #E9D5FF', borderRadius: '12px', padding: '16px' }}>
+                        <div style={{ fontWeight: '800', color: '#6B21A8', fontSize: '0.92rem', marginBottom: '4px' }}>
+                          ⭐ Google Profile & Reviews
+                        </div>
+                        <div style={{ fontSize: '0.82rem', color: '#475569', marginBottom: '10px' }}>
+                          The Laddu Story, Bangalore
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          <a href={BRAND_CHANNELS.GOOGLE_PROFILE} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', background: '#7E22CE', color: '#FFFFFF', textDecoration: 'none', padding: '6px 12px', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '700' }}>
+                            ↗ Test Google Search
+                          </a>
+                          <a href="https://business.google.com" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', background: '#FFFFFF', border: '1px solid #7E22CE', color: '#7E22CE', textDecoration: 'none', padding: '6px 10px', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '700' }}>
+                            Verify on Google
+                          </a>
+                        </div>
+                      </div>
+
+                      {/* Corporate Email */}
+                      <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '12px', padding: '16px' }}>
+                        <div style={{ fontWeight: '800', color: '#92400E', fontSize: '0.92rem', marginBottom: '4px' }}>
+                          ✉️ Corporate Leads Email
+                        </div>
+                        <div style={{ fontSize: '0.82rem', color: '#475569', marginBottom: '10px' }}>
+                          {BRAND_CHANNELS.EMAIL_LEADS}
+                        </div>
+                        <a href={`mailto:${BRAND_CHANNELS.EMAIL_LEADS}?subject=Corporate%20Gifting%20Inquiry%20-%20The%20Laddu%20Story`} style={{ display: 'inline-block', background: '#D97706', color: '#FFFFFF', textDecoration: 'none', padding: '6px 12px', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '700' }}>
+                          ✉️ Test Mailto Link
+                        </a>
+                      </div>
+
+                    </div>
+                  </div>
+
+                </div>
+              );
+            })()}
+
           </div>
         )}
 
@@ -4881,55 +5341,79 @@ export default function App() {
               </p>
             </div>
 
-            {/* Column 3: Corporate & Inquiries */}
+            {/* Column 3: Orders, Corporate & Inquiries */}
             <div>
-              <h5 style={{ margin: '0 0 12px', fontSize: '0.95rem', color: '#FDE68A', fontWeight: '700' }}>💼 B2B & Corporate Gifting</h5>
+              <h5 style={{ margin: '0 0 12px', fontSize: '0.95rem', color: '#FDE68A', fontWeight: '700' }}>
+                {(isStaffRoute && isAdminLoggedIn) ? '💼 B2B & Corporate Gifting (Staff)' : '📞 Orders & Inquiries'}
+              </h5>
               <p style={{ fontSize: '0.82rem', color: '#CBD5E1', lineHeight: 1.5, margin: '0 0 10px' }}>
-                Custom corporate hampers, festive employee gifting, wedding favor boxes, and wellness hampers.
+                {(isStaffRoute && isAdminLoggedIn)
+                  ? 'Custom corporate hampers, festive employee gifting, wedding favor boxes, and wellness hampers.'
+                  : 'For custom orders, festive celebrations, or diet queries, feel free to contact our kitchen team.'}
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <span style={{ fontSize: '0.82rem', color: '#93C5FD' }}>✉️ Corporate Leads: {BRAND_CHANNELS.EMAIL_LEADS}</span>
+                <span style={{ fontSize: '0.82rem', color: '#93C5FD' }}>✉️ Email: {BRAND_CHANNELS.EMAIL_LEADS}</span>
                 <span style={{ fontSize: '0.82rem', color: '#86EFAC' }}>📞 Direct Kitchen: +91 {BRAND_CHANNELS.WHATSAPP_NUMBER}</span>
-                <button 
-                  onClick={() => setShowCorporateModal(true)}
-                  style={{ background: '#F59E0B', color: '#350B15', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: '800', fontSize: '0.78rem', cursor: 'pointer', marginTop: '4px', width: 'fit-content' }}
-                >
-                  🎁 Request Tasting Box →
-                </button>
+                {(isStaffRoute && isAdminLoggedIn) && (
+                  <button 
+                    onClick={() => setShowCorporateModal(true)}
+                    style={{ background: '#F59E0B', color: '#350B15', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: '800', fontSize: '0.78rem', cursor: 'pointer', marginTop: '4px', width: 'fit-content' }}
+                  >
+                    🎁 Test Tasting Box Modal →
+                  </button>
+                )}
               </div>
             </div>
 
-            {/* Column 4: Official Social Channels */}
-            <div>
-              <h5 style={{ margin: '0 0 12px', fontSize: '0.95rem', color: '#FDE68A', fontWeight: '700' }}>🌐 Official Social Channels</h5>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <a href={BRAND_CHANNELS.INSTAGRAM} target="_blank" rel="noopener noreferrer" style={{ color: '#F1F5F9', textDecoration: 'none', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span>📸 Instagram:</span> <strong style={{ color: '#FDE68A' }}>@theladdustory</strong>
-                </a>
-                <a href={BRAND_CHANNELS.FACEBOOK} target="_blank" rel="noopener noreferrer" style={{ color: '#F1F5F9', textDecoration: 'none', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span>📘 Facebook:</span> <strong style={{ color: '#FDE68A' }}>The Laddu Story</strong>
-                </a>
-                <a href={BRAND_CHANNELS.WHATSAPP_LINK} target="_blank" rel="noopener noreferrer" style={{ color: '#F1F5F9', textDecoration: 'none', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span>💬 WhatsApp:</span> <strong style={{ color: '#34D399' }}>+91 {BRAND_CHANNELS.WHATSAPP_NUMBER}</strong>
-                </a>
-                <a href={BRAND_CHANNELS.YOUTUBE} target="_blank" rel="noopener noreferrer" style={{ color: '#F1F5F9', textDecoration: 'none', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span>📺 YouTube Channel:</span> <strong style={{ color: '#F87171' }}>@TheLadduStory</strong>
-                </a>
-                <a href={BRAND_CHANNELS.GOOGLE_PROFILE} target="_blank" rel="noopener noreferrer" style={{ color: '#F1F5F9', textDecoration: 'none', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span>⭐ Google Profile:</span> <strong style={{ color: '#60A5FA' }}>Reviews & Ratings</strong>
-                </a>
+            {/* Column 4: Official Social Channels (VISIBLE ONLY IN STAFF OMS LOGGED-IN VIEW) */}
+            {(isStaffRoute && isAdminLoggedIn) && (
+              <div>
+                <h5 style={{ margin: '0 0 12px', fontSize: '0.95rem', color: '#FDE68A', fontWeight: '700' }}>🌐 Staff Social Sandbox</h5>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <a href={BRAND_CHANNELS.INSTAGRAM} target="_blank" rel="noopener noreferrer" style={{ color: '#F1F5F9', textDecoration: 'none', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span>📸 Instagram:</span> <strong style={{ color: '#FDE68A' }}>@theladdustory</strong>
+                  </a>
+                  <a href={BRAND_CHANNELS.FACEBOOK} target="_blank" rel="noopener noreferrer" style={{ color: '#F1F5F9', textDecoration: 'none', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span>📘 Facebook:</span> <strong style={{ color: '#FDE68A' }}>The Laddu Story</strong>
+                  </a>
+                  <a href={BRAND_CHANNELS.WHATSAPP_LINK} target="_blank" rel="noopener noreferrer" style={{ color: '#F1F5F9', textDecoration: 'none', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span>💬 WhatsApp:</span> <strong style={{ color: '#34D399' }}>+91 {BRAND_CHANNELS.WHATSAPP_NUMBER}</strong>
+                  </a>
+                  <a href={BRAND_CHANNELS.YOUTUBE} target="_blank" rel="noopener noreferrer" style={{ color: '#F1F5F9', textDecoration: 'none', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span>📺 YouTube Channel:</span> <strong style={{ color: '#F87171' }}>@TheLadduStory</strong>
+                  </a>
+                  <a href={BRAND_CHANNELS.GOOGLE_PROFILE} target="_blank" rel="noopener noreferrer" style={{ color: '#F1F5F9', textDecoration: 'none', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span>⭐ Google Profile:</span> <strong style={{ color: '#60A5FA' }}>Reviews & Ratings</strong>
+                  </a>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', fontSize: '0.74rem', color: '#94A3B8' }}>
             <div>© {new Date().getFullYear()} The Laddu Story. Handcrafted with devotion in Bangalore. All rights reserved.</div>
-            <div style={{ display: 'flex', gap: '16px' }}>
+            <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
               <span>FSSAI Compliant</span>
               <span>•</span>
               <span>100% Pure Desi Cow Ghee</span>
               <span>•</span>
               <span>Zero White Sugar</span>
+              <span>•</span>
+              <button
+                type="button"
+                id="footer-staff-login-btn"
+                onClick={() => {
+                  setIsStaffRoute(true);
+                  if (isAdminLoggedIn) {
+                    setActiveTab('admin');
+                  } else {
+                    setShowLoginModal(true);
+                  }
+                }}
+                style={{ background: 'transparent', border: 'none', color: '#94A3B8', fontSize: '0.74rem', cursor: 'pointer', textDecoration: 'underline' }}
+              >
+                🔐 Staff OMS Portal
+              </button>
             </div>
           </div>
         </footer>
@@ -6158,6 +6642,26 @@ export default function App() {
                 </div>
               </form>
             )}
+
+            <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px dashed #E2E8F0', textAlign: 'center', fontSize: '0.78rem', color: '#64748B' }}>
+              Kitchen or Store Staff?{' '}
+              <button
+                type="button"
+                id="modal-switch-to-staff-btn"
+                onClick={() => {
+                  setShowCustomerLoginModal(false);
+                  setIsStaffRoute(true);
+                  if (isAdminLoggedIn) {
+                    setActiveTab('admin');
+                  } else {
+                    setShowLoginModal(true);
+                  }
+                }}
+                style={{ background: 'transparent', border: 'none', color: '#B45309', fontWeight: '800', cursor: 'pointer', padding: 0 }}
+              >
+                Open Staff OMS 🔒 →
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -6483,7 +6987,7 @@ export default function App() {
               Staff & Kitchen Login
             </h3>
             <p style={{ margin: '0 0 16px', fontSize: '0.82rem', color: '#64748B' }}>
-              Enter 4-digit Staff PIN to manage kitchen dispatch & inventory.
+              Enter 4-digit Staff PIN (e.g. 1234 or 8888) to access Kitchen OMS, WhatsApp testing suite & social media hub.
             </p>
 
             <form onSubmit={handleAdminLogin}>
@@ -7670,140 +8174,142 @@ export default function App() {
         );
       })()}
 
-      {/* FLOATING WHATSAPP & OMNICHANNEL CONCIERGE WIDGET */}
-      <div style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 1200 }}>
-        {showConciergeMenu && (
-          <div style={{
-            position: 'absolute',
-            bottom: '70px',
-            right: '0',
-            width: '290px',
-            background: '#FFFFFF',
-            borderRadius: '16px',
-            boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
-            border: '1px solid #E2E8F0',
-            padding: '16px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '10px'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #F1F5F9', paddingBottom: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10B981' }} />
-                <span style={{ fontWeight: '800', fontSize: '0.88rem', color: '#4A121E' }}>Kitchen Concierge</span>
+      {/* FLOATING WHATSAPP & OMNICHANNEL CONCIERGE WIDGET (STAFF OMS TESTING ONLY) */}
+      {(isStaffRoute && isAdminLoggedIn && activeTab === 'admin') && (
+        <div style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 1200 }}>
+          {showConciergeMenu && (
+            <div style={{
+              position: 'absolute',
+              bottom: '70px',
+              right: '0',
+              width: '290px',
+              background: '#FFFFFF',
+              borderRadius: '16px',
+              boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
+              border: '1px solid #E2E8F0',
+              padding: '16px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #F1F5F9', paddingBottom: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10B981' }} />
+                  <span style={{ fontWeight: '800', fontSize: '0.88rem', color: '#4A121E' }}>Staff Concierge Tester</span>
+                </div>
+                <button onClick={() => setShowConciergeMenu(false)} style={{ background: 'transparent', border: 'none', color: '#94A3B8', fontSize: '0.9rem', cursor: 'pointer', padding: 0 }}>✕</button>
               </div>
-              <button onClick={() => setShowConciergeMenu(false)} style={{ background: 'transparent', border: 'none', color: '#94A3B8', fontSize: '0.9rem', cursor: 'pointer', padding: 0 }}>✕</button>
+              
+              <a
+                href="https://wa.me/919343207515?text=Namaste!%20Testing%20Direct%20Kitchen%20WhatsApp%20flow%20from%20Staff%20OMS."
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  background: '#ECFDF5',
+                  border: '1px solid #A7F3D0',
+                  color: '#065F46',
+                  padding: '10px 12px',
+                  borderRadius: '8px',
+                  textDecoration: 'none',
+                  fontWeight: '700',
+                  fontSize: '0.82rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                <span>💬 Test Direct WhatsApp Link</span>
+              </a>
+
+              <button
+                onClick={() => { setShowConciergeMenu(false); setShowCorporateModal(true); }}
+                style={{
+                  background: '#FEF3C7',
+                  border: '1px solid #FDE68A',
+                  color: '#92400E',
+                  padding: '10px 12px',
+                  borderRadius: '8px',
+                  fontWeight: '700',
+                  fontSize: '0.82rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  cursor: 'pointer',
+                  textAlign: 'left'
+                }}
+              >
+                <span>🎁 Test Corporate Lead Modal</span>
+              </button>
+
+              <a
+                href={BRAND_CHANNELS.INSTAGRAM}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  background: '#FFF1F2',
+                  border: '1px solid #FECDD3',
+                  color: '#9F1239',
+                  padding: '10px 12px',
+                  borderRadius: '8px',
+                  textDecoration: 'none',
+                  fontWeight: '700',
+                  fontSize: '0.82rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                <span>📸 Instagram: @theladdustory</span>
+              </a>
+
+              <a
+                href={BRAND_CHANNELS.GOOGLE_PROFILE}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  background: '#EFF6FF',
+                  border: '1px solid #BFDBFE',
+                  color: '#1E40AF',
+                  padding: '10px 12px',
+                  borderRadius: '8px',
+                  textDecoration: 'none',
+                  fontWeight: '700',
+                  fontSize: '0.82rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                <span>⭐ Google Profile & Reviews</span>
+              </a>
             </div>
-            
-            <a
-              href="https://wa.me/919343207515?text=Namaste!%20I%20am%20chatting%20from%20The%20Laddu%20Story%20Storefront."
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                background: '#ECFDF5',
-                border: '1px solid #A7F3D0',
-                color: '#065F46',
-                padding: '10px 12px',
-                borderRadius: '8px',
-                textDecoration: 'none',
-                fontWeight: '700',
-                fontSize: '0.82rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}
-            >
-              <span>💬 Direct Kitchen WhatsApp</span>
-            </a>
+          )}
 
-            <button
-              onClick={() => { setShowConciergeMenu(false); setShowCorporateModal(true); }}
-              style={{
-                background: '#FEF3C7',
-                border: '1px solid #FDE68A',
-                color: '#92400E',
-                padding: '10px 12px',
-                borderRadius: '8px',
-                fontWeight: '700',
-                fontSize: '0.82rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                cursor: 'pointer',
-                textAlign: 'left'
-              }}
-            >
-              <span>🎁 Corporate Gifting & Tasting Box</span>
-            </button>
-
-            <a
-              href={BRAND_CHANNELS.INSTAGRAM}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                background: '#FFF1F2',
-                border: '1px solid #FECDD3',
-                color: '#9F1239',
-                padding: '10px 12px',
-                borderRadius: '8px',
-                textDecoration: 'none',
-                fontWeight: '700',
-                fontSize: '0.82rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}
-            >
-              <span>📸 Instagram: @theladdustory</span>
-            </a>
-
-            <a
-              href={BRAND_CHANNELS.GOOGLE_PROFILE}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                background: '#EFF6FF',
-                border: '1px solid #BFDBFE',
-                color: '#1E40AF',
-                padding: '10px 12px',
-                borderRadius: '8px',
-                textDecoration: 'none',
-                fontWeight: '700',
-                fontSize: '0.82rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}
-            >
-              <span>⭐ Google Profile & Reviews</span>
-            </a>
-          </div>
-        )}
-
-        <button
-          onClick={() => setShowConciergeMenu(prev => !prev)}
-          title="Direct Kitchen WhatsApp Concierge"
-          style={{
-            width: '56px',
-            height: '56px',
-            borderRadius: '50%',
-            background: '#25D366',
-            color: '#FFFFFF',
-            border: 'none',
-            fontSize: '1.7rem',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            boxShadow: '0 4px 18px rgba(37, 211, 102, 0.45)',
-            transition: 'transform 0.2s',
-            position: 'relative'
-          }}
-        >
-          <span>💬</span>
-          <span style={{ position: 'absolute', top: '2px', right: '2px', width: '12px', height: '12px', borderRadius: '50%', background: '#EF4444', border: '2px solid #FFFFFF' }} />
-        </button>
-      </div>
+          <button
+            onClick={() => setShowConciergeMenu(prev => !prev)}
+            title="Direct Kitchen WhatsApp Concierge"
+            style={{
+              width: '56px',
+              height: '56px',
+              borderRadius: '50%',
+              background: '#25D366',
+              color: '#FFFFFF',
+              border: 'none',
+              fontSize: '1.7rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              boxShadow: '0 4px 18px rgba(37, 211, 102, 0.45)',
+              transition: 'transform 0.2s',
+              position: 'relative'
+            }}
+          >
+            <span>💬</span>
+            <span style={{ position: 'absolute', top: '2px', right: '2px', width: '12px', height: '12px', borderRadius: '50%', background: '#EF4444', border: '2px solid #FFFFFF' }} />
+          </button>
+        </div>
+      )}
 
       {/* CORPORATE GIFTING & TASTING BOX MODAL */}
       {showCorporateModal && (
