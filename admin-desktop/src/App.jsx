@@ -5396,22 +5396,6 @@ export default function App() {
               <span>100% Pure Desi Cow Ghee</span>
               <span>•</span>
               <span>Zero White Sugar</span>
-              <span>•</span>
-              <button
-                type="button"
-                id="footer-staff-login-btn"
-                onClick={() => {
-                  setIsStaffRoute(true);
-                  if (isAdminLoggedIn) {
-                    setActiveTab('admin');
-                  } else {
-                    setShowLoginModal(true);
-                  }
-                }}
-                style={{ background: 'transparent', border: 'none', color: '#94A3B8', fontSize: '0.74rem', cursor: 'pointer', textDecoration: 'underline' }}
-              >
-                🔐 Staff OMS Portal
-              </button>
             </div>
           </div>
         </footer>
