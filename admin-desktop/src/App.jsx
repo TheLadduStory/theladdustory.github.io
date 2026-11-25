@@ -738,6 +738,97 @@ export default function App() {
       if (tab === 'corporate' || tab === 'b2b') {
         setShowCorporateModal(true);
       }
+
+      // Check for Review Deep-Link (e.g. from WhatsApp: ?review=1&order=TLS-WA-32565&sku=SATTU-ALMOND&phone=9833964424&name=Vidya+Kishan+Salian)
+      const reviewParam = params.get('review');
+      if (reviewParam === '1' || reviewParam === 'true' || reviewParam === 'yes') {
+        const orderParam = (params.get('order') || '').trim();
+        const targetSku = (params.get('sku') || '').trim();
+        const rawPhone = params.get('phone') || '';
+        const phoneParam = rawPhone.replace(/\D/g, '').slice(-10);
+        const nameParam = (params.get('name') || '').trim();
+
+        if (orderParam) setReviewOrderIdInput(orderParam);
+        if (phoneParam) {
+          setReviewPhoneInput(phoneParam);
+          try { localStorage.setItem('tls_cust_phone', phoneParam); } catch (e) {}
+        }
+        if (nameParam) {
+          setReviewNameInput(nameParam);
+          try { localStorage.setItem('tls_cust_name', nameParam); } catch (e) {}
+        }
+
+        setReviewRatingInput(5);
+        setReviewCommentInput('');
+        setReviewSuccessMsg('');
+        setIsStaffReviewMode(false);
+
+        // Match product by SKU
+        let prodToReview = null;
+        if (targetSku) {
+          prodToReview = products.find(p => p.sku?.toUpperCase() === targetSku.toUpperCase() || p.sku === targetSku);
+        }
+        if (!prodToReview && orderParam) {
+          const ord = orders.find(o => (o.orderId || o.id) === orderParam);
+          if (ord && ord.items && ord.items.length > 0) {
+            const firstIt = ord.items[0];
+            prodToReview = products.find(p => p.sku === firstIt.sku || p.name === firstIt.name);
+          }
+        }
+        if (!prodToReview && products.length > 0) {
+          prodToReview = products[0];
+        }
+        if (prodToReview) {
+          setSelectedProductForReview(prodToReview);
+        }
+
+        // Fetch customer's orders and single order from Supabase if online
+        if (isSupabaseConfigured()) {
+          if (phoneParam) {
+            fetchCustomerOrdersFromSupabase(phoneParam).then(custOrders => {
+              if (custOrders && custOrders.length > 0) {
+                setOrders(prev => {
+                  const existingIds = new Set(prev.map(x => x.orderId || x.id));
+                  const newOrds = custOrders.filter(x => !existingIds.has(x.orderId || x.id));
+                  return [...newOrds, ...prev];
+                });
+                if (!prodToReview && orderParam) {
+                  const matchedOrd = custOrders.find(o => (o.orderId || o.id) === orderParam);
+                  if (matchedOrd && matchedOrd.items && matchedOrd.items.length > 0) {
+                    const firstIt = matchedOrd.items[0];
+                    const foundP = products.find(p => p.sku === firstIt.sku || p.name === firstIt.name);
+                    if (foundP) setSelectedProductForReview(foundP);
+                  }
+                }
+              }
+            });
+          }
+          if (orderParam) {
+            fetchSingleOrderFromSupabase(orderParam).then(singleOrd => {
+              if (singleOrd) {
+                setOrders(prev => {
+                  if (prev.some(x => (x.orderId || x.id) === (singleOrd.orderId || singleOrd.id))) return prev;
+                  return [singleOrd, ...prev];
+                });
+                if (!nameParam && singleOrd.name) {
+                  setReviewNameInput(singleOrd.name);
+                  try { localStorage.setItem('tls_cust_name', singleOrd.name); } catch (e) {}
+                }
+                if (!phoneParam && singleOrd.phone) {
+                  const cleanSingleP = (singleOrd.phone || '').replace(/\D/g, '').slice(-10);
+                  setReviewPhoneInput(cleanSingleP);
+                  try { localStorage.setItem('tls_cust_phone', cleanSingleP); } catch (e) {}
+                }
+                if (!targetSku && singleOrd.items && singleOrd.items.length > 0) {
+                  const firstIt = singleOrd.items[0];
+                  const foundP = products.find(p => p.sku === firstIt.sku || p.name === firstIt.name);
+                  if (foundP) setSelectedProductForReview(foundP);
+                }
+              }
+            });
+          }
+        }
+      }
     } catch (e) {}
   }, []);
 
@@ -1706,6 +1797,14 @@ export default function App() {
       try {
         localStorage.setItem('tls_reviews_db', JSON.stringify(updated));
       } catch(e) {}
+
+      // Persist patron details locally so subsequent reviews auto-fill seamlessly
+      if (authorPhone) {
+        try { localStorage.setItem('tls_cust_phone', authorPhone.replace(/\D/g, '').slice(-10)); } catch(e) {}
+      }
+      if (authorName && authorName !== 'Valued Patron') {
+        try { localStorage.setItem('tls_cust_name', authorName); } catch(e) {}
+      }
 
       // Broadcast review to all devices via Realtime topic
       try {
@@ -2868,8 +2967,24 @@ export default function App() {
                                       setReviewNameInput(customerUser.name || '');
                                       setReviewPhoneInput(customerUser.phone || '');
                                     } else {
-                                      setReviewNameInput('');
-                                      setReviewPhoneInput('');
+                                      const savedPhone = (typeof localStorage !== 'undefined' ? localStorage.getItem('tls_cust_phone') : '') || '';
+                                      const savedName = (typeof localStorage !== 'undefined' ? localStorage.getItem('tls_cust_name') : '') || '';
+                                      setReviewNameInput(savedName);
+                                      setReviewPhoneInput(savedPhone);
+                                      if (savedPhone) {
+                                        const cleanP = savedPhone.replace(/\D/g, '').slice(-10);
+                                        if (cleanP.length === 10 && isSupabaseConfigured()) {
+                                          fetchCustomerOrdersFromSupabase(cleanP).then(co => {
+                                            if (co && co.length > 0) {
+                                              setOrders(prev => {
+                                                const existingIds = new Set(prev.map(x => x.orderId || x.id));
+                                                const newOrders = co.filter(x => !existingIds.has(x.orderId || x.id));
+                                                return [...newOrders, ...prev];
+                                              });
+                                            }
+                                          });
+                                        }
+                                      }
                                     }
                                   }}
                                   style={{
@@ -3215,8 +3330,16 @@ export default function App() {
                                   setReviewNameInput(customerUser.name || '');
                                   setReviewPhoneInput(customerUser.phone || '');
                                 } else {
-                                  if (o.name) setReviewNameInput(o.name);
-                                  if (o.phone) setReviewPhoneInput(o.phone);
+                                  const pName = o.name || (typeof localStorage !== 'undefined' ? localStorage.getItem('tls_cust_name') : '') || '';
+                                  const pPhone = (o.phone || (typeof localStorage !== 'undefined' ? localStorage.getItem('tls_cust_phone') : '') || '').replace(/\D/g, '').slice(-10);
+                                  setReviewNameInput(pName);
+                                  setReviewPhoneInput(pPhone);
+                                  if (pPhone) {
+                                    try { localStorage.setItem('tls_cust_phone', pPhone); } catch (e) {}
+                                  }
+                                  if (pName) {
+                                    try { localStorage.setItem('tls_cust_name', pName); } catch (e) {}
+                                  }
                                 }
                               }}
                               style={{ background: '#FFFBEB', border: '1px solid #FDE68A', padding: '6px 14px', borderRadius: '6px', fontWeight: '700', fontSize: '0.8rem', color: '#92400E', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
@@ -4320,8 +4443,14 @@ export default function App() {
                                 // 3. Porter Dispatched Alert
                                 const waPorterText = `Namaste ${patronName}! 🚚\n\nYour order *#${o.orderId}* is out for delivery via Porter!\n\n👤 *Driver:* ${porter?.driver || 'Assigned Driver'}${porter?.phone ? ` (+91 ${porter.phone})` : ''}\n📦 *Booking Ref:* ${porter?.booking || 'Porter Booking'}\n💵 *Porter Fare:* ${porter?.fare ? `₹${porter.fare} (Pay to driver)` : 'As per Porter app'}\n\nPlease keep your phone reachable. Enjoy your fresh laddus!`;
 
-                                // 4. Review & Feedback Request
-                                const waReviewText = `Namaste ${patronName}! 🙏❤️\n\nWe hope you and your family loved the pure Desi Cow Ghee aroma and authentic taste of *The Laddu Story* laddus from order *#${o.orderId}*!\n\nCould you take 30 seconds to share your review on Google? It means the world to our kitchen:\n⭐ *Review Link:* ${BRAND_CHANNELS.GOOGLE_REVIEW_LINK}\n\nYou can also leave tasting notes on our website: https://theladdustory.github.io\n\nWith devotion,\nTeam The Laddu Story 🌿`;
+                                // 4. Review & Feedback Request (Application Deep Link for Specific Purchased Items)
+                                const firstItem = (o.items && o.items.length > 0) ? o.items[0] : null;
+                                const itemSku = firstItem?.sku || (products[0]?.sku || 'RAGI-WALNUT');
+                                const itemName = firstItem?.name || (o.items && o.items.map(it => it.name).join(', ')) || 'Pure Cow Ghee Laddus';
+                                const cleanPatronName = (o.name || '').replace(/\s*(flat|tower|apt|near|house|#|\d+).*$/i, '').replace(/[,.-]+$/, '').trim() || (o.name || 'Patron').trim();
+                                const waReviewDeepLink = `https://theladdustory.github.io/?review=1&order=${encodeURIComponent(o.orderId || o.id || '')}&sku=${encodeURIComponent(itemSku)}&phone=${encodeURIComponent(patronPhone)}&name=${encodeURIComponent(cleanPatronName)}`;
+
+                                const waReviewText = `Namaste ${cleanPatronName}! 🙏❤️\n\nWe hope you and your family loved the pure Desi Cow Ghee aroma and authentic taste of *${itemName}* from order *#${o.orderId}*!\n\nCould you please take 30 seconds to share your honest review & tasting feedback with our kitchen team? It means the world to our artisanal kitchen:\n\n⭐ *Tap to Rate & Review Your Laddus:*\n${waReviewDeepLink}\n\nYour feedback helps us maintain 100% pure cow ghee & organic jaggery perfection.\n\nWith devotion & gratitude,\n*Team The Laddu Story* 🌿`;
 
                                 const waReceiptUrl = `https://wa.me/91${patronPhone}?text=${encodeURIComponent(waReceiptText)}`;
                                 const waReadyUrl = `https://wa.me/91${patronPhone}?text=${encodeURIComponent(waReadyText)}`;
@@ -4912,11 +5041,15 @@ export default function App() {
                 }
 
                 if (testWaTemplate === 'REVIEW_REQUEST') {
-                  return `*Namaste ${name}! 🙏*\n\n` +
+                  const sampleSku = 'SATTU-ALMOND';
+                  const sampleOrder = 'TLS-WA-32565';
+                  const samplePhone = (testWaPhone || '9833964424').replace(/\D/g, '').slice(-10);
+                  const sampleUrl = `https://theladdustory.github.io/?review=1&order=${sampleOrder}&sku=${sampleSku}&phone=${samplePhone}&name=${encodeURIComponent(name || 'Patron')}`;
+                  return `*Namaste ${name || 'Patron'}! 🙏❤️*\n\n` +
                     `We hope you and your family enjoyed the fresh artisanal laddus from *The Laddu Story*!\n\n` +
-                    `As an artisanal kitchen, your feedback means the world to us. Could you take 30 seconds to share your review on our Google Profile?\n\n` +
-                    `⭐ *Write a Google Review:* ${BRAND_CHANNELS.GOOGLE_REVIEW_LINK}\n\n` +
-                    `Thank you for choosing pure health and traditions! 🌿`;
+                    `As an artisanal kitchen, your feedback means the world to us. Could you take 30 seconds to share your honest tasting review with our kitchen?\n\n` +
+                    `⭐ *Tap to Rate & Review Your Laddus:*\n${sampleUrl}\n\n` +
+                    `Thank you for choosing pure cow ghee & traditional wellness! 🌿`;
                 }
 
                 if (testWaTemplate === 'CORPORATE_LEAD') {
@@ -7737,37 +7870,66 @@ export default function App() {
                 <form onSubmit={handleSubmitReview}>
                   {/* 1. Item / SKU Selector Dropdown */}
                   <div style={{ marginBottom: '14px' }}>
-                    <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: '800', color: '#4A121E', marginBottom: '4px' }}>
-                      SELECT ITEM / SKU FOR REVIEW *
-                    </label>
-                    <select
-                      value={selectedProductForReview.sku}
-                      onChange={(e) => {
-                        const targetSku = e.target.value;
-                        const found = products.find(p => p.sku === targetSku);
-                        if (found) {
-                          setSelectedProductForReview(found);
-                        }
-                      }}
-                      style={{
-                        width: '100%',
-                        boxSizing: 'border-box',
-                        padding: '10px 12px',
-                        borderRadius: '8px',
-                        border: isStaff ? '1.5px solid #059669' : '1.5px solid #FDE68A',
-                        background: '#FFFDF9',
-                        fontSize: '0.9rem',
-                        fontWeight: '700',
-                        color: '#4A121E',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      {products.map(p => (
-                        <option key={p.sku} value={p.sku}>
-                          🥣 {p.name} ({p.sku})
-                        </option>
-                      ))}
-                    </select>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <label style={{ fontSize: '0.74rem', fontWeight: '800', color: '#4A121E' }}>
+                        SELECT ITEM / SKU FOR REVIEW *
+                      </label>
+                      {reviewOrderIdInput && (
+                        <span style={{ fontSize: '0.7rem', color: '#047857', fontWeight: '700' }}>
+                          From Order #{reviewOrderIdInput}
+                        </span>
+                      )}
+                    </div>
+                    {(() => {
+                      const linkedOrd = reviewOrderIdInput ? orders.find(o => (o.orderId || o.id) === reviewOrderIdInput) : null;
+                      const orderItems = linkedOrd && Array.isArray(linkedOrd.items) ? linkedOrd.items : [];
+
+                      return (
+                        <select
+                          value={selectedProductForReview.sku}
+                          onChange={(e) => {
+                            const targetSku = e.target.value;
+                            const found = products.find(p => p.sku === targetSku);
+                            if (found) {
+                              setSelectedProductForReview(found);
+                            }
+                          }}
+                          style={{
+                            width: '100%',
+                            boxSizing: 'border-box',
+                            padding: '10px 12px',
+                            borderRadius: '8px',
+                            border: isStaff ? '1.5px solid #059669' : '1.5px solid #FDE68A',
+                            background: '#FFFDF9',
+                            fontSize: '0.9rem',
+                            fontWeight: '700',
+                            color: '#4A121E',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {orderItems.length > 0 && (
+                            <optgroup label={`Items from Your Order (#${reviewOrderIdInput})`}>
+                              {orderItems.map((it, idx) => {
+                                const matchingProd = products.find(p => p.sku === it.sku || p.name === it.name);
+                                const itemSkuVal = matchingProd?.sku || it.sku || selectedProductForReview.sku;
+                                return (
+                                  <option key={`ord-sku-${idx}`} value={itemSkuVal}>
+                                    ⭐ {it.name || it.sku} {it.packLabel ? `(${it.packLabel})` : ''}
+                                  </option>
+                                );
+                              })}
+                            </optgroup>
+                          )}
+                          <optgroup label="All Laddu Varieties">
+                            {products.map(p => (
+                              <option key={p.sku} value={p.sku}>
+                                🥣 {p.name} ({p.sku})
+                              </option>
+                            ))}
+                          </optgroup>
+                        </select>
+                      );
+                    })()}
                   </div>
 
                   {/* 2. Star Rating (1 to 5) */}
@@ -7978,7 +8140,13 @@ export default function App() {
                               type="text"
                               placeholder="e.g. Priya (Optional)"
                               value={reviewNameInput}
-                              onChange={e => setReviewNameInput(e.target.value)}
+                              onChange={e => {
+                                const val = e.target.value;
+                                setReviewNameInput(val);
+                                if (val.trim()) {
+                                  try { localStorage.setItem('tls_cust_name', val.trim()); } catch (err) {}
+                                }
+                              }}
                               style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '0.88rem' }}
                             />
                           </div>
@@ -7991,7 +8159,39 @@ export default function App() {
                               maxLength={10}
                               placeholder="10-digit (Optional)"
                               value={reviewPhoneInput}
-                              onChange={e => setReviewPhoneInput(e.target.value)}
+                              onChange={e => {
+                                const val = e.target.value;
+                                setReviewPhoneInput(val);
+                                const clean = val.replace(/\D/g, '').slice(-10);
+                                if (clean.length === 10) {
+                                  try { localStorage.setItem('tls_cust_phone', clean); } catch (err) {}
+                                  // Auto-fill name from matching orders or Supabase
+                                  const matchingOrd = orders.find(o => (o.phone || '').replace(/\D/g, '').slice(-10) === clean);
+                                  if (matchingOrd && matchingOrd.name && !reviewNameInput) {
+                                    setReviewNameInput(matchingOrd.name);
+                                    try { localStorage.setItem('tls_cust_name', matchingOrd.name); } catch (err) {}
+                                  } else if (isSupabaseConfigured() && !reviewNameInput) {
+                                    lookupCustomerInSupabase(clean).then(cust => {
+                                      if (cust && cust.name && !reviewNameInput) {
+                                        setReviewNameInput(cust.name);
+                                        try { localStorage.setItem('tls_cust_name', cust.name); } catch (err) {}
+                                      }
+                                    });
+                                  }
+                                  // Fetch customer's orders from Supabase if not in memory
+                                  if (isSupabaseConfigured()) {
+                                    fetchCustomerOrdersFromSupabase(clean).then(co => {
+                                      if (co && co.length > 0) {
+                                        setOrders(prev => {
+                                          const existingIds = new Set(prev.map(x => x.orderId || x.id));
+                                          const newOrders = co.filter(x => !existingIds.has(x.orderId || x.id));
+                                          return [...newOrders, ...prev];
+                                        });
+                                      }
+                                    });
+                                  }
+                                }
+                              }}
                               style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '0.88rem' }}
                             />
                           </div>
@@ -8016,11 +8216,19 @@ export default function App() {
                         </div>
 
                         {(() => {
-                          // Strict filter: ONLY orders matching the logged in customer's phone
-                          const userPhone = customerUser ? (customerUser.phone || '').replace(/\D/g, '').slice(-10) : '';
+                          // Strict filter: ONLY orders matching the customer's phone or linked order ID
+                          const userPhone = (
+                            (customerUser && customerUser.phone) ||
+                            reviewPhoneInput ||
+                            (typeof localStorage !== 'undefined' ? localStorage.getItem('tls_cust_phone') : '') ||
+                            ''
+                          ).replace(/\D/g, '').slice(-10);
+
                           const myOrders = userPhone.length === 10
                             ? orders.filter(o => (o.phone || '').replace(/\D/g, '').slice(-10) === userPhone)
-                            : [];
+                            : (reviewOrderIdInput
+                                ? orders.filter(o => (o.orderId || o.id) === reviewOrderIdInput)
+                                : []);
 
                           if (myOrders.length > 0) {
                             return (
